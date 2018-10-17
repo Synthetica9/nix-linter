@@ -12,5 +12,5 @@ main :: IO ()
 main = do
   args <- getArgs
   for_ args $ \arg -> do
-    Success parsed <- parseNixFile arg
+    Success parsed <- parseNixFileLoc arg
     for_ (checkAll parsed) print

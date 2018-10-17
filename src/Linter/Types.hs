@@ -18,5 +18,6 @@ instance Show Offense where
 data OffenseType
   = RepetitionWithoutWith
   | UnusedLetBind VarName
+  | UnusedArg VarName
   | EmptyInherit
   deriving (Show)

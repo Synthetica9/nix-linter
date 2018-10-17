@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase          #-}
+{-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Linter where
@@ -6,8 +7,9 @@ module Linter where
 import           Control.Monad
 import           Data.Fix
 import           Data.Foldable            (fold)
-import           Data.List.NonEmpty
+import           Data.List.NonEmpty       (NonEmpty (..))
 import           Data.Maybe
+import           Data.Text                (isPrefixOf, pack)
 
 import           Nix.Expr.Types
 import           Nix.Expr.Types.Annotated
@@ -38,6 +40,7 @@ foldingPara :: (Functor f, Foldable f) => (a -> a -> a) -> a -> (f (Fix f, a) ->
 foldingPara (+) ϵ f = para rAlgebra where
   rAlgebra x = fromMaybe (foldr ((+) . snd) ϵ x) $ f x
 
+foldingPara' :: (Functor f, Foldable f, Monoid m) => (f (Fix f, m) -> Maybe m) -> Fix f -> m
 foldingPara' = foldingPara mappend mempty
 
 foldingCata :: (Functor f, Foldable f) => (a -> a -> a) -> a -> (f a -> Maybe a) -> Fix f -> a
@@ -64,14 +67,18 @@ hasUsefulRef name = foldingCata (||) False $ \case
   NSet xs  -> Just $ or $ xs <&> \case
     Inherit Nothing names _ -> StaticKey name `elem` names -- Dynamic keys aren't allowed in this context.
     x -> or x
+  NRecSet xs -> Just $ or $ xs <&> \case
+    Inherit Nothing names _ -> StaticKey name `elem` names -- Dynamic keys aren't allowed in this context.
+    x -> or x
+  -- Why isn't Rec just a Boolean switch?
   _           -> Nothing
 
 
 fromMegaparsecPos :: MPP.SourcePos -> SourcePos
 fromMegaparsecPos (MPP.SourcePos file x y) = SourcePos file x y
 
-checkUnused :: NExpr -> [Offense]
-checkUnused = foldingPara' $ \case
+checkUnusedLetBinding :: NExpr -> [Offense]
+checkUnusedLetBinding = foldingPara' $ \case
   (NLet binds (usedIn, otherOffenses)) -> Just $ otherOffenses ++
     concat (choose binds <&> \(bind, binds) -> let
       extraO = fold $ snd <$> bind :: [Offense]
@@ -86,6 +93,18 @@ checkUnused = foldingPara' $ \case
       in offenses ++ extraO)
   _ -> Nothing
 
+checkUnusedArg :: NExprLoc -> [Offense]
+checkUnusedArg = foldingPara' $ \a -> let
+  Ann loc content = getCompose a in case content of
+    NAbs params (usedIn, otherOffenses) -> let
+      names = filter (not . isPrefixOf "_") $ case params of
+         Param name           -> [name]
+         ParamSet xs _ global -> maybeToList global ++ (fst <$> xs)
+      offenses = [Offense (UnusedArg name) (spanBegin loc) | name <- names, not $ hasUsefulRef name $ stripAnnotation usedIn]
+      in Just $ otherOffenses ++ offenses
+    _ -> Nothing
+
+
 checkEmptyInherit :: NExpr -> [Offense]
 checkEmptyInherit = foldingPara' $ \case
   NSet xs -> Just $ concat $ xs <&> \case
@@ -93,8 +112,9 @@ checkEmptyInherit = foldingPara' $ \case
     x -> concat $ snd <$> x
   _ -> Nothing
 
-checks :: [NExpr -> [Offense]]
-checks = [checkEmptyInherit, checkUnused]
 
-checkAll :: NExpr -> [Offense]
+checks :: [NExprLoc -> [Offense]]
+checks = ((. stripAnnotation) <$> [checkEmptyInherit, checkUnusedLetBinding]) ++ [checkUnusedArg]
+
+checkAll :: NExprLoc -> [Offense]
 checkAll x = ($ x) =<< checks
