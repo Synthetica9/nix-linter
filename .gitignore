@@ -23,3 +23,5 @@ cabal.project.local~
 
 result
 result-*
+
+all_warnings
