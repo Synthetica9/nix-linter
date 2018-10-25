@@ -29,4 +29,5 @@ data OffenseType
   | UnusedArg VarName
   | EmptyInherit
   | UnneededRec
+  | ListLiteralConcat
   deriving (Show)
