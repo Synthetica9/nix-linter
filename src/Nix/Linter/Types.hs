@@ -41,4 +41,5 @@ data OffenseType
   | SetLiteralUpdate
   | UpdateEmptySet
   | UnneededAntiquote
+  | NegateAtom
   deriving (Show)

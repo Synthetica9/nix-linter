@@ -13,6 +13,7 @@ import           Data.Maybe
 import           Data.Set                 (member)
 import           Data.Text                (isPrefixOf, pack)
 
+import           Nix.Atoms
 import           Nix.Expr.Types
 import           Nix.Expr.Types.Annotated
 import           Nix.TH                   (freeVars)
@@ -105,6 +106,10 @@ checkUnneededAntiquote = \case
     [Offense UnneededAntiquote pos]
   _ -> []
 
+checkNegateAtom :: CheckBase
+checkNegateAtom = \case
+  NUnary_ pos NNot (Fix (NConstant_ _ (NBool _))) -> [Offense NegateAtom pos]
+  _ -> []
 
 checks :: [CheckBase]
 checks =
