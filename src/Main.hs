@@ -6,7 +6,7 @@ import           System.Environment
 import           Nix.Parser
 import           Nix.Pretty
 
-import           Linter
+import           Nix.Linter
 
 main :: IO ()
 main = do

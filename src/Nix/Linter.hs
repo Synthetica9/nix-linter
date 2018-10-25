@@ -3,12 +3,10 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Linter where
+module Nix.Linter where
 
 import           Control.Monad
-import           Data.Fix
 import           Data.Foldable            (fold)
-import qualified Data.HashSet             as S
 import           Data.List.NonEmpty       (NonEmpty (..))
 import           Data.Maybe
 import           Data.Set                 (member)
@@ -18,7 +16,8 @@ import           Nix.Expr.Types
 import           Nix.Expr.Types.Annotated
 import           Nix.TH                   (freeVars)
 
-import           Linter.Types
+import           Nix.Linter.Morphisms
+import           Nix.Linter.Types
 
 maximumRepetitionsWithoutWith = 3
 
@@ -26,42 +25,11 @@ maximumRepetitionsWithoutWith = 3
 -- repetitionsWithoutWith :: NExprF r -> [OffenseF r]
 -- repetitionsWithoutWith = traverse _
 
-
--- From https://blog.sumtypeofway.com/recursion-schemes-part-iii-folds-in-context/,
--- but removed the author's head from his ass.
-
--- cata ::              (a ->       b  -> b) -> b     -> [a]    -> b
--- para ::              (a -> ([a], b) -> b) -> b     -> [a]    -> b
--- cata :: Functor f => (f a           -> a)          -> Fix f -> a
-para    :: Functor f => (f (Fix f, a)  -> a)          -> Fix f -> a
-para rAlg = rAlg . fmap fanout . unFix
-    where fanout t = (t, para rAlg t)
-
-
-foldingPara :: (Functor f, Foldable f) => (a -> a -> a) -> a -> (f (Fix f, a) -> Maybe a) -> Fix f -> a
-foldingPara (+) ϵ f = para rAlgebra where
-  rAlgebra x = fromMaybe (foldr ((+) . snd) ϵ x) $ f x
-
-foldingPara' :: (Functor f, Foldable f, Monoid m) => (f (Fix f, m) -> Maybe m) -> Fix f -> m
-foldingPara' = foldingPara mappend mempty
-
-foldingCata :: (Functor f, Foldable f) => (a -> a -> a) -> a -> (f a -> Maybe a) -> Fix f -> a
-foldingCata (+) ϵ f = cata algebra where
-  algebra x = fromMaybe (foldr (+) ϵ x) $ f x
-
-foldingCata' :: (Functor f, Foldable f, Monoid m) => (f m -> Maybe m) -> Fix f -> m
-foldingCata' = foldingCata mappend mempty
-
 (<$$>) :: (Functor f, Functor g) => (a -> b) -> f (g a) -> f (g b)
 (<$$>) = fmap . fmap
 
 (<&>) :: Functor f => f a -> (a -> b) -> f b
 (<&>) = flip fmap
-
-gatherNames :: NExprLoc -> S.HashSet VarName
-gatherNames = cata $ \case
-   NSym_ _ var -> S.singleton var
-   Compose (Ann _ x) -> fold x
 
 choose :: [a] -> [(a, [a])]
 choose []       = []

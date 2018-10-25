@@ -1,6 +1,6 @@
 {-# LANGUAGE KindSignatures #-}
 
-module Linter.Types where
+module Nix.Linter.Types where
 
 import           Nix.Expr.Types
 import           Nix.Expr.Types.Annotated
