@@ -12,5 +12,7 @@ main :: IO ()
 main = do
   args <- getArgs
   for_ args $ \arg -> do
-    Success parsed <- parseNixFileLoc arg
-    for_ (checkAll parsed) print
+    parsed <- parseNixFileLoc arg
+    case parsed of
+      Success parse -> for_ (checkAll parse) print
+      Failure err   -> putStr "Parse Error: " >> print  err
