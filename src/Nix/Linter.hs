@@ -33,8 +33,8 @@ values = (f =<<)  where
   f _                = []
 
 
-checkUnusedLetBinding :: Check
-checkUnusedLetBinding = collectingPara' $ \case
+checkUnusedLetBinding :: CheckBase
+checkUnusedLetBinding = \case
   (NLet_ loc binds usedIn) -> let
     offenses = choose binds >>= \case
       (bind, others) -> case bind of
@@ -47,8 +47,8 @@ checkUnusedLetBinding = collectingPara' $ \case
   _ -> Nothing
 
 
-checkUnusedArg :: Check
-checkUnusedArg = collectingPara' $ \case
+checkUnusedArg :: CheckBase
+checkUnusedArg = \case
   NAbs_ pos params usedIn -> let
     names = filter (not . isPrefixOf "_") $ case params of
        Param name           -> [name]
@@ -58,16 +58,16 @@ checkUnusedArg = collectingPara' $ \case
   _ -> Nothing
 
 
-checkEmptyInherit :: Check
-checkEmptyInherit = collectingPara' $ \case
+checkEmptyInherit :: CheckBase
+checkEmptyInherit = \case
   NSet_ pos xs -> Just $ xs >>= \case
     Inherit Nothing [] _ -> [Offense EmptyInherit pos]
     _ -> []
   _ -> Nothing
 
 
-checkUnneededRec :: Check
-checkUnneededRec = collectingPara' $ \case
+checkUnneededRec :: CheckBase
+checkUnneededRec = \case
   NRecSet_ pos binds -> let
       needsRec = choose binds <&> \case
         (bind, others) -> case bind of
@@ -77,36 +77,36 @@ checkUnneededRec = collectingPara' $ \case
   _ -> Nothing
 
 
-checkListLiteralConcat :: Check
-checkListLiteralConcat = collectingPara' $ \case
+checkListLiteralConcat :: CheckBase
+checkListLiteralConcat = \case
   NBinary_ pos NConcat (Fix (NList_ _ _)) (Fix (NList_ _ _)) ->
     Just [Offense ListLiteralConcat pos]
   _ -> Nothing
 
 
-checkSetLiteralUpdate :: Check
-checkSetLiteralUpdate = collectingPara' $ \case
+checkSetLiteralUpdate :: CheckBase
+checkSetLiteralUpdate = \case
   NBinary_ pos NUpdate (Fix (NSet_ _ _)) (Fix (NSet_ _ _)) ->
     Just [Offense SetLiteralUpdate pos]
   _ -> Nothing
 
 
-checkUpdateEmptySet :: Check
-checkUpdateEmptySet = collectingPara' $ \case
+checkUpdateEmptySet :: CheckBase
+checkUpdateEmptySet = \case
   NBinary_ pos NUpdate (Fix (NSet_ _ xs1)) (Fix (NSet_ _ xs2)) ->
     guard (any null [xs1, xs2]) >> Just [Offense UpdateEmptySet pos]
   _ -> Nothing
 
 
 -- Works, but the pattern can be useful, so not in the full list of checks.
-checkUnneededAntiquote :: Check
-checkUnneededAntiquote = collectingPara' $ \case
+checkUnneededAntiquote :: CheckBase
+checkUnneededAntiquote = \case
   NStr_ pos (DoubleQuoted [Antiquoted _]) ->
     Just [Offense UnneededAntiquote pos]
   _ -> Nothing
 
 
-checks :: [Check]
+checks :: [CheckBase]
 checks =
   [ checkUnneededRec
   , checkEmptyInherit
@@ -118,5 +118,8 @@ checks =
   -- , checkUnneededAntiquote
   ]
 
+check :: CheckBase -> Check
+check = collectingPara'
+
 checkAll :: Check
-checkAll x = ($ x) =<< checks
+checkAll = check $ mergeCheckBase checks

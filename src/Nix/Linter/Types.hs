@@ -2,13 +2,23 @@
 
 module Nix.Linter.Types where
 
+import           Data.Fix
+import           Data.Maybe               (catMaybes)
+
 import           Nix.Expr.Types
 import           Nix.Expr.Types.Annotated
+
 
 import           Text.Megaparsec.Pos      (unPos)
 
 data Offense = Offense OffenseType SrcSpan
 type Check = NExprLoc -> [Offense]
+type CheckBase = NExprLocF (Fix NExprLocF) -> Maybe [Offense]
+
+mergeCheckBase :: [CheckBase] -> CheckBase
+mergeCheckBase fs x = listWithMaybe $ concat $ catMaybes $ ($ x) <$> fs where
+  listWithMaybe [] = Nothing
+  listWithMaybe xs = Just xs
 
 prettySourcePos :: SourcePos -> String
 prettySourcePos (SourcePos file l c) = file ++ ":" ++ show (unPos l) ++ ":" ++ show (unPos c)
