@@ -30,4 +30,6 @@ data OffenseType
   | EmptyInherit
   | UnneededRec
   | ListLiteralConcat
+  | SetLiteralUpdate
+  | UpdateEmptySet
   deriving (Show)

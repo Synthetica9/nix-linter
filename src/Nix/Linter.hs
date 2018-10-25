@@ -73,8 +73,7 @@ checkUnneededRec = collectingPara' $ \case
         (bind, others) -> case bind of
           NamedVar (StaticKey name :| []) _ _ -> not $ any (hasRef name) (values others)
           _ -> False
-      newOffenses = [Offense UnneededRec pos | not $ or needsRec]
-    in Just newOffenses
+    in Just [Offense UnneededRec pos | not $ or needsRec]
   _ -> Nothing
 
 
@@ -85,6 +84,20 @@ checkListLiteralConcat = collectingPara' $ \case
   _ -> Nothing
 
 
+checkSetLiteralUpdate :: Check
+checkSetLiteralUpdate = collectingPara' $ \case
+  NBinary_ pos NUpdate (Fix (NSet_ _ _)) (Fix (NSet_ _ _)) ->
+    Just [Offense SetLiteralUpdate pos]
+  _ -> Nothing
+
+
+checkUpdateEmptySet :: Check
+checkUpdateEmptySet = collectingPara' $ \case
+  NBinary_ pos NUpdate (Fix (NSet_ _ xs1)) (Fix (NSet_ _ xs2)) ->
+    guard (any null [xs1, xs2]) >> Just [Offense UpdateEmptySet pos]
+  _ -> Nothing
+
+
 checks :: [Check]
 checks =
   [ checkUnneededRec
@@ -92,6 +105,8 @@ checks =
   , checkUnusedArg
   , checkUnusedLetBinding
   , checkListLiteralConcat
+  , checkSetLiteralUpdate
+  , checkUpdateEmptySet
   ]
 
 checkAll :: Check
