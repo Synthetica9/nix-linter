@@ -1,4 +1,5 @@
 {-# LANGUAGE LambdaCase          #-}
+{-# LANGUAGE MonadComprehensions #-}
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -7,12 +8,15 @@ module Linter where
 import           Control.Monad
 import           Data.Fix
 import           Data.Foldable            (fold)
+import qualified Data.HashSet             as S
 import           Data.List.NonEmpty       (NonEmpty (..))
 import           Data.Maybe
+import           Data.Set                 (member)
 import           Data.Text                (isPrefixOf, pack)
 
 import           Nix.Expr.Types
 import           Nix.Expr.Types.Annotated
+import           Nix.TH                   (freeVars)
 
 import           Linter.Types
 
@@ -56,42 +60,39 @@ foldingCata' = foldingCata mappend mempty
 (<&>) :: Functor f => f a -> (a -> b) -> f b
 (<&>) = flip fmap
 
+gatherNames :: NExprLoc -> S.HashSet VarName
+gatherNames = cata $ \case
+   NSym_ _ var -> S.singleton var
+   Compose (Ann _ x) -> fold x
+
 choose :: [a] -> [(a, [a])]
 choose []       = []
 choose (x : xs) = (x, xs) : ((x :) <$$> choose xs)
 
-hasUsefulRef :: VarName -> NExpr -> Bool
-hasUsefulRef name = foldingCata (||) False $ \case
-  NSym name'  -> Just $ name == name'
-  NAssert _ x -> Just x
-  NSet xs  -> Just $ or $ xs <&> \case
-    Inherit Nothing names _ -> StaticKey name `elem` names -- Dynamic keys aren't allowed in this context.
-    x -> or x
-  NRecSet xs -> Just $ or $ xs <&> \case
-    Inherit Nothing names _ -> StaticKey name `elem` names -- Dynamic keys aren't allowed in this context.
-    x -> or x
-  -- Why isn't Rec just a Boolean switch?
-  _           -> Nothing
-
+hasRef :: VarName -> NExprLoc -> Bool
+hasRef name t = member name $ (freeVars t)
 
 fromMegaparsecPos :: MPP.SourcePos -> SourcePos
 fromMegaparsecPos (MPP.SourcePos file x y) = SourcePos file x y
 
-checkUnusedLetBinding :: NExpr -> [Offense]
+values :: [Binding r] -> [r]
+values = (f =<<)  where
+  f (NamedVar _ x _) = [x]
+  f _                = []
+
+checkUnusedLetBinding :: NExprLoc -> [Offense]
 checkUnusedLetBinding = foldingPara' $ \case
-  (NLet binds (usedIn, otherOffenses)) -> Just $ otherOffenses ++
-    concat (choose binds <&> \(bind, binds) -> let
-      extraO = fold $ snd <$> bind :: [Offense]
-      bind' = fst <$> bind
-      binds' = fst <$$> binds
-      offenses = case bind' of
-        (NamedVar (StaticKey name :| []) val pos) -> [Offense
-          (UnusedLetBind name)
-          (fromMegaparsecPos pos)
-          | not $ hasUsefulRef name $ Fix $ NLet binds' usedIn]
-        _                               -> []
-      in offenses ++ extraO)
+  (NLet_ loc binds (usedIn, otherOffenses)) -> let
+      newOffenses = choose (fst <$$> binds) >>= \case
+        (bind, others) -> case bind of
+          NamedVar (StaticKey name :| []) _ loc -> [
+            Offense (UnusedLetBind name) loc
+              | not $ any (hasRef name) (values others)
+              , not $ hasRef name usedIn]
+          _ -> []
+            in Just $ otherOffenses ++ newOffenses
   _ -> Nothing
+
 
 checkUnusedArg :: NExprLoc -> [Offense]
 checkUnusedArg = foldingPara' $ \a -> let
@@ -100,7 +101,7 @@ checkUnusedArg = foldingPara' $ \a -> let
       names = filter (not . isPrefixOf "_") $ case params of
          Param name           -> [name]
          ParamSet xs _ global -> maybeToList global ++ (fst <$> xs)
-      offenses = [Offense (UnusedArg name) (spanBegin loc) | name <- names, not $ hasUsefulRef name $ stripAnnotation usedIn]
+      offenses = [Offense (UnusedArg name) (spanBegin loc) | name <- names, not $ hasRef name usedIn]
       in Just $ otherOffenses ++ offenses
     _ -> Nothing
 
@@ -114,7 +115,7 @@ checkEmptyInherit = foldingPara' $ \case
 
 
 checks :: [NExprLoc -> [Offense]]
-checks = ((. stripAnnotation) <$> [checkEmptyInherit, checkUnusedLetBinding]) ++ [checkUnusedArg]
+checks = ((. stripAnnotation) <$> [checkEmptyInherit]) ++ [checkUnusedArg, checkUnusedLetBinding]
 
 checkAll :: NExprLoc -> [Offense]
 checkAll x = ($ x) =<< checks
