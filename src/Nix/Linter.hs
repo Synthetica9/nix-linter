@@ -97,6 +97,13 @@ checkUpdateEmptySet = collectingPara' $ \case
     guard (any null [xs1, xs2]) >> Just [Offense UpdateEmptySet pos]
   _ -> Nothing
 
+-- Works, but the pattern can be useful, so not in the full list of checks.
+
+checkUnneededAntiquote :: Check
+checkUnneededAntiquote = collectingPara' $ \case
+  NStr_ pos (DoubleQuoted [Antiquoted _]) ->
+    Just [Offense UnneededAntiquote pos]
+  _ -> Nothing
 
 checks :: [Check]
 checks =
@@ -107,6 +114,7 @@ checks =
   , checkListLiteralConcat
   , checkSetLiteralUpdate
   , checkUpdateEmptySet
+  -- , checkUnneededAntiquote
   ]
 
 checkAll :: Check

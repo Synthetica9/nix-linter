@@ -32,4 +32,5 @@ data OffenseType
   | ListLiteralConcat
   | SetLiteralUpdate
   | UpdateEmptySet
+  | UnneededAntiquote
   deriving (Show)
