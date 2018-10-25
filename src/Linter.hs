@@ -20,8 +20,6 @@ import           Nix.TH                   (freeVars)
 
 import           Linter.Types
 
-import qualified Text.Megaparsec.Pos      as MPP
-
 maximumRepetitionsWithoutWith = 3
 
 
@@ -72,9 +70,6 @@ choose (x : xs) = (x, xs) : ((x :) <$$> choose xs)
 hasRef :: VarName -> NExprLoc -> Bool
 hasRef name t = member name $ (freeVars t)
 
-fromMegaparsecPos :: MPP.SourcePos -> SourcePos
-fromMegaparsecPos (MPP.SourcePos file x y) = SourcePos file x y
-
 values :: [Binding r] -> [r]
 values = (f =<<)  where
   f (NamedVar _ x _) = [x]
@@ -85,7 +80,7 @@ checkUnusedLetBinding = foldingPara' $ \case
   (NLet_ loc binds (usedIn, otherOffenses)) -> let
       newOffenses = choose (fst <$$> binds) >>= \case
         (bind, others) -> case bind of
-          NamedVar (StaticKey name :| []) _ loc -> [
+          NamedVar (StaticKey name :| []) _ _ -> [
             Offense (UnusedLetBind name) loc
               | not $ any (hasRef name) (values others)
               , not $ hasRef name usedIn]
@@ -101,21 +96,33 @@ checkUnusedArg = foldingPara' $ \a -> let
       names = filter (not . isPrefixOf "_") $ case params of
          Param name           -> [name]
          ParamSet xs _ global -> maybeToList global ++ (fst <$> xs)
-      offenses = [Offense (UnusedArg name) (spanBegin loc) | name <- names, not $ hasRef name usedIn]
+      offenses = [Offense (UnusedArg name) loc | name <- names, not $ hasRef name usedIn]
       in Just $ otherOffenses ++ offenses
     _ -> Nothing
 
 
-checkEmptyInherit :: NExpr -> [Offense]
+checkEmptyInherit :: NExprLoc -> [Offense]
 checkEmptyInherit = foldingPara' $ \case
-  NSet xs -> Just $ concat $ xs <&> \case
-    Inherit Nothing [] pos -> [Offense EmptyInherit (fromMegaparsecPos pos)]
+  NSet_ pos xs -> Just $ concat $ xs <&> \case
+    Inherit Nothing [] _ -> [Offense EmptyInherit pos]
     x -> concat $ snd <$> x
+  _ -> Nothing
+
+checkUnneededRec :: NExprLoc -> [Offense]
+checkUnneededRec = foldingPara' $ \case
+  NRecSet_ pos binds -> let
+      needsRec = choose (fst <$$> binds) <&> \case
+        (bind, others) -> case bind of
+          NamedVar (StaticKey name :| []) _ _ -> not $ any (hasRef name) (values others)
+          _ -> False
+      newOffenses = [Offense UnneededRec pos | not $ or needsRec]
+
+      in Just $ newOffenses
   _ -> Nothing
 
 
 checks :: [NExprLoc -> [Offense]]
-checks = ((. stripAnnotation) <$> [checkEmptyInherit]) ++ [checkUnusedArg, checkUnusedLetBinding]
+checks = [checkUnneededRec, checkEmptyInherit, checkUnusedArg, checkUnusedLetBinding]
 
 checkAll :: NExprLoc -> [Offense]
 checkAll x = ($ x) =<< checks
