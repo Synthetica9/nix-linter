@@ -8,6 +8,7 @@ import           Nix.Expr.Types.Annotated
 import           Text.Megaparsec.Pos      (unPos)
 
 data Offense = Offense OffenseType SrcSpan
+type Check = NExprLoc -> [Offense]
 
 prettySourcePos :: SourcePos -> String
 prettySourcePos (SourcePos file l c) = file ++ ":" ++ show (unPos l) ++ ":" ++ show (unPos c)

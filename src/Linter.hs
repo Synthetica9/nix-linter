@@ -75,7 +75,7 @@ values = (f =<<)  where
   f (NamedVar _ x _) = [x]
   f _                = []
 
-checkUnusedLetBinding :: NExprLoc -> [Offense]
+checkUnusedLetBinding :: Check
 checkUnusedLetBinding = foldingPara' $ \case
   (NLet_ loc binds (usedIn, otherOffenses)) -> let
       newOffenses = choose (fst <$$> binds) >>= \case
@@ -89,7 +89,7 @@ checkUnusedLetBinding = foldingPara' $ \case
   _ -> Nothing
 
 
-checkUnusedArg :: NExprLoc -> [Offense]
+checkUnusedArg :: Check
 checkUnusedArg = foldingPara' $ \a -> let
   Ann loc content = getCompose a in case content of
     NAbs params (usedIn, otherOffenses) -> let
@@ -101,14 +101,14 @@ checkUnusedArg = foldingPara' $ \a -> let
     _ -> Nothing
 
 
-checkEmptyInherit :: NExprLoc -> [Offense]
+checkEmptyInherit :: Check
 checkEmptyInherit = foldingPara' $ \case
   NSet_ pos xs -> Just $ concat $ xs <&> \case
     Inherit Nothing [] _ -> [Offense EmptyInherit pos]
     x -> concat $ snd <$> x
   _ -> Nothing
 
-checkUnneededRec :: NExprLoc -> [Offense]
+checkUnneededRec :: Check
 checkUnneededRec = foldingPara' $ \case
   NRecSet_ pos binds -> let
       needsRec = choose (fst <$$> binds) <&> \case
@@ -116,13 +116,11 @@ checkUnneededRec = foldingPara' $ \case
           NamedVar (StaticKey name :| []) _ _ -> not $ any (hasRef name) (values others)
           _ -> False
       newOffenses = [Offense UnneededRec pos | not $ or needsRec]
-
       in Just $ newOffenses
   _ -> Nothing
 
-
-checks :: [NExprLoc -> [Offense]]
+checks :: [Check]
 checks = [checkUnneededRec, checkEmptyInherit, checkUnusedArg, checkUnusedLetBinding]
 
-checkAll :: NExprLoc -> [Offense]
+checkAll :: Check
 checkAll x = ($ x) =<< checks
