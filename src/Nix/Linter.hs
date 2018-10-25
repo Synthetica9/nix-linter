@@ -43,8 +43,8 @@ checkUnusedLetBinding = \case
             | not $ any (hasRef name) (values others)
             , not $ hasRef name usedIn]
         _ -> []
-          in Just offenses
-  _ -> Nothing
+          in offenses
+  _ -> []
 
 
 checkUnusedArg :: CheckBase
@@ -54,16 +54,16 @@ checkUnusedArg = \case
        Param name           -> [name]
        ParamSet xs _ global -> maybeToList global ++ (fst <$> xs)
     offenses = [Offense (UnusedArg name) pos | name <- names, not $ hasRef name usedIn]
-    in Just offenses
-  _ -> Nothing
+    in offenses
+  _ -> []
 
 
 checkEmptyInherit :: CheckBase
 checkEmptyInherit = \case
-  NSet_ pos xs -> Just $ xs >>= \case
+  NSet_ pos xs -> xs >>= \case
     Inherit Nothing [] _ -> [Offense EmptyInherit pos]
     _ -> []
-  _ -> Nothing
+  _ -> []
 
 
 checkUnneededRec :: CheckBase
@@ -73,37 +73,37 @@ checkUnneededRec = \case
         (bind, others) -> case bind of
           NamedVar (StaticKey name :| []) _ _ -> not $ any (hasRef name) (values others)
           _ -> False
-    in Just [Offense UnneededRec pos | not $ or needsRec]
-  _ -> Nothing
+    in [Offense UnneededRec pos | not $ or needsRec]
+  _ -> []
 
 
 checkListLiteralConcat :: CheckBase
 checkListLiteralConcat = \case
   NBinary_ pos NConcat (Fix (NList_ _ _)) (Fix (NList_ _ _)) ->
-    Just [Offense ListLiteralConcat pos]
-  _ -> Nothing
+    [Offense ListLiteralConcat pos]
+  _ -> []
 
 
 checkSetLiteralUpdate :: CheckBase
 checkSetLiteralUpdate = \case
   NBinary_ pos NUpdate (Fix (NSet_ _ _)) (Fix (NSet_ _ _)) ->
-    Just [Offense SetLiteralUpdate pos]
-  _ -> Nothing
+    [Offense SetLiteralUpdate pos]
+  _ -> []
 
 
 checkUpdateEmptySet :: CheckBase
 checkUpdateEmptySet = \case
   NBinary_ pos NUpdate (Fix (NSet_ _ xs1)) (Fix (NSet_ _ xs2)) ->
-    guard (any null [xs1, xs2]) >> Just [Offense UpdateEmptySet pos]
-  _ -> Nothing
+    guard (any null [xs1, xs2]) >> [Offense UpdateEmptySet pos]
+  _ -> []
 
 
 -- Works, but the pattern can be useful, so not in the full list of checks.
 checkUnneededAntiquote :: CheckBase
 checkUnneededAntiquote = \case
   NStr_ pos (DoubleQuoted [Antiquoted _]) ->
-    Just [Offense UnneededAntiquote pos]
-  _ -> Nothing
+    [Offense UnneededAntiquote pos]
+  _ -> []
 
 
 checks :: [CheckBase]
@@ -116,10 +116,11 @@ checks =
   , checkSetLiteralUpdate
   , checkUpdateEmptySet
   -- , checkUnneededAntiquote
+  , checkNegateAtom
   ]
 
 check :: CheckBase -> Check
-check = collectingPara'
+check = collectingPara
 
 checkAll :: Check
 checkAll = check $ mergeCheckBase checks

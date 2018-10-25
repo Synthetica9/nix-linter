@@ -15,12 +15,9 @@ para    :: Functor f => (f (Fix f, a)  -> a)          -> Fix f -> a
 para rAlg = rAlg . fmap fanout . unFix
     where fanout t = (t, para rAlg t)
 
-collectingPara :: (Functor f, Foldable f) => (a -> a -> a) -> a -> (f (Fix f) -> Maybe a) -> Fix f -> a
-collectingPara (+) ϵ f = foldingPara (+) ϵ f'  where
-  f' x = f $ fst <$> x
-
-collectingPara' :: (Functor f, Foldable f, Monoid m) => (f (Fix f) -> Maybe m) -> Fix f -> m
-collectingPara' = collectingPara mappend mempty
+collectingPara :: (Functor f, Foldable f) => (f (Fix f) -> [a]) -> Fix f -> [a]
+collectingPara f = foldingPara (++) [] f'  where
+  f' x = Just $ f $ fst <$> x
 
 foldingPara :: (Functor f, Foldable f) => (a -> a -> a) -> a -> (f (Fix f, a) -> Maybe a) -> Fix f -> a
 foldingPara (+) ϵ f = para rAlgebra where
