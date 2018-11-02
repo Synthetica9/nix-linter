@@ -13,6 +13,8 @@ import           Data.Maybe
 import           Data.Set                 (member)
 import           Data.Text                (isPrefixOf, pack)
 
+import           Data.Pair
+
 import           Nix.Atoms
 import           Nix.Expr.Types
 import           Nix.Expr.Types.Annotated
@@ -77,33 +79,38 @@ checkUnneededRec = \case
     in [Offense UnneededRec pos | not $ or needsRec]
   _ -> []
 
+checkOpBase :: OffenseType -> Pair (UnwrappedNExprLoc -> Bool) -> NBinaryOp -> Bool -> CheckBase
+checkOpBase ot (Pair p1 p2) op reflexive = \case
+  NBinary_ pos op' (Fix e2) (Fix e1) ->
+    [Offense ot pos | p1 e1 && p2 e2 || p1 e2 && p2 e1 && reflexive, op == op']
+  _ -> []
+
+
+checkSymmetricOpBase :: OffenseType -> (UnwrappedNExprLoc -> Bool) -> NBinaryOp -> CheckBase
+checkSymmetricOpBase ot p op = checkOpBase ot (dup p) op False
+
 
 checkListLiteralConcat :: CheckBase
-checkListLiteralConcat = \case
-  NBinary_ pos NConcat (Fix (NList_ _ _)) (Fix (NList_ _ _)) ->
-    [Offense ListLiteralConcat pos]
-  _ -> []
+checkListLiteralConcat = checkSymmetricOpBase ListLiteralConcat isListLiteral NConcat where
+  isListLiteral = \case
+    NList_ _ _ -> True
+    _ -> False
 
-
-isSetLiteral :: NExprLoc -> Bool
-isSetLiteral x = case (unFix x) of
-  NSet_ _ _ -> True 
-  NRecSet_ _ _ -> True 
-  _ -> False
-  
 
 checkSetLiteralUpdate :: CheckBase
-checkSetLiteralUpdate = \case
-  NBinary_ pos NUpdate e2 e1 ->
-    [Offense SetLiteralUpdate pos | all isSetLiteral [e1, e2]]
-  _ -> []
+checkSetLiteralUpdate = checkSymmetricOpBase SetLiteralUpdate isSetLiteral NUpdate where
+  isSetLiteral = \case
+    NSet_ _ _ -> True
+    NRecSet_ _ _ -> True
+    _ -> False
 
 
 checkUpdateEmptySet :: CheckBase
-checkUpdateEmptySet = \case
-  NBinary_ pos NUpdate (Fix (NSet_ _ xs1)) (Fix (NSet_ _ xs2)) ->
-    guard (any null [xs1, xs2]) >> [Offense UpdateEmptySet pos]
-  _ -> []
+checkUpdateEmptySet = checkOpBase UpdateEmptySet (Pair (const True) isEmptySetLiteral) NUpdate True where
+  isEmptySetLiteral = \case
+    NSet_ _ [] -> True
+    NRecSet_ _ [] -> True
+    _ -> False
 
 
 -- Works, but the pattern can be useful, so not in the full list of checks.

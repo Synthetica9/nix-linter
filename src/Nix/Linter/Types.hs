@@ -13,6 +13,8 @@ import           Text.Megaparsec.Pos      (unPos)
 
 data Offense = Offense OffenseType SrcSpan
 type Check = NExprLoc -> [Offense]
+
+type UnwrappedNExprLoc = NExprLocF (Fix NExprLocF)
 type CheckBase = NExprLocF (Fix NExprLocF) -> [Offense]
 
 mergeCheckBase :: [CheckBase] -> CheckBase
