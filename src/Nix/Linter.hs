@@ -38,15 +38,14 @@ values = (f =<<)  where
 
 checkUnusedLetBinding :: CheckBase
 checkUnusedLetBinding = \case
-  (NLet_ loc binds usedIn) -> let
-    offenses = choose binds >>= \case
+  (NLet_ loc binds usedIn) ->
+    choose binds >>= \case
       (bind, others) -> case bind of
         NamedVar (StaticKey name :| []) _ _ -> [
           Offense (UnusedLetBind name) loc
             | not $ any (hasRef name) (values others)
             , not $ hasRef name usedIn]
         _ -> []
-          in offenses
   _ -> []
 
 
@@ -56,8 +55,7 @@ checkUnusedArg = \case
     names = filter (not . isPrefixOf "_") $ case params of
        Param name           -> [name]
        ParamSet xs _ global -> maybeToList global ++ (fst <$> xs)
-    offenses = [Offense (UnusedArg name) pos | name <- names, not $ hasRef name usedIn]
-    in offenses
+    in [Offense (UnusedArg name) pos | name <- names, not $ hasRef name usedIn]
   _ -> []
 
 
@@ -67,7 +65,6 @@ checkEmptyInherit = \case
     Inherit _ [] _ -> [Offense EmptyInherit pos]
     _ -> []
   _ -> []
-
 
 checkUnneededRec :: CheckBase
 checkUnneededRec = \case
