@@ -64,7 +64,7 @@ checkUnusedArg = \case
 checkEmptyInherit :: CheckBase
 checkEmptyInherit = \case
   NSet_ pos xs -> xs >>= \case
-    Inherit Nothing [] _ -> [Offense EmptyInherit pos]
+    Inherit _ [] _ -> [Offense EmptyInherit pos]
     _ -> []
   _ -> []
 
