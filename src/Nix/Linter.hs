@@ -42,7 +42,7 @@ checkUnusedLetBinding = \case
     choose binds >>= \case
       (bind, others) -> case bind of
         NamedVar (StaticKey name :| []) _ _ -> [
-          Offense (UnusedLetBind name) loc
+            UnusedLetBind name
             | not $ any (hasRef name) (values others)
             , not $ hasRef name usedIn]
         _ -> []
@@ -51,35 +51,35 @@ checkUnusedLetBinding = \case
 
 checkUnusedArg :: CheckBase
 checkUnusedArg = \case
-  NAbs_ pos params usedIn -> let
+  NAbs_ _ params usedIn -> let
     names = filter (not . isPrefixOf "_") $ case params of
        Param name           -> [name]
        ParamSet xs _ global -> maybeToList global ++ (fst <$> xs)
-    in [Offense (UnusedArg name) pos | name <- names, not $ hasRef name usedIn]
+    in [UnusedArg name | name <- names, not $ hasRef name usedIn]
   _ -> []
 
 
 checkEmptyInherit :: CheckBase
 checkEmptyInherit = \case
-  NSet_ pos xs -> xs >>= \case
-    Inherit _ [] _ -> [Offense EmptyInherit pos]
+  NSet_ _ xs -> xs >>= \case
+    Inherit _ [] _ -> [EmptyInherit]
     _ -> []
   _ -> []
 
 checkUnneededRec :: CheckBase
 checkUnneededRec = \case
-  NRecSet_ pos binds -> let
+  NRecSet_ _ binds -> let
       needsRec = choose binds <&> \case
         (bind, others) -> case bind of
           NamedVar (StaticKey name :| []) _ _ -> not $ any (hasRef name) (values others)
           _ -> False
-    in [Offense UnneededRec pos | not $ or needsRec]
+    in [UnneededRec | not $ or needsRec]
   _ -> []
 
 checkOpBase :: OffenseType -> Pair (UnwrappedNExprLoc -> Bool) -> NBinaryOp -> Bool -> CheckBase
 checkOpBase ot (Pair p1 p2) op reflexive = \case
-  NBinary_ pos op' (Fix e2) (Fix e1) ->
-    [Offense ot pos | p1 e1 && p2 e2 || p1 e2 && p2 e1 && reflexive, op == op']
+  NBinary_ _ op' (Fix e2) (Fix e1) ->
+    [ot | p1 e1 && p2 e2 || p1 e2 && p2 e1 && reflexive, op == op']
   _ -> []
 
 
@@ -113,13 +113,13 @@ checkUpdateEmptySet = checkOpBase UpdateEmptySet (Pair (const True) isEmptySetLi
 -- Works, but the pattern can be useful, so not in the full list of checks.
 checkUnneededAntiquote :: CheckBase
 checkUnneededAntiquote = \case
-  NStr_ pos (DoubleQuoted [Antiquoted _]) ->
-    [Offense UnneededAntiquote pos]
+  NStr_ _ (DoubleQuoted [Antiquoted _]) ->
+    [UnneededAntiquote]
   _ -> []
 
 checkNegateAtom :: CheckBase
 checkNegateAtom = \case
-  NUnary_ pos NNot (Fix (NConstant_ _ (NBool _))) -> [Offense NegateAtom pos]
+  NUnary_ _ NNot (Fix (NConstant_ _ (NBool _))) -> [NegateAtom]
   _ -> []
 
 checks :: [CheckBase]
@@ -135,8 +135,11 @@ checks =
   , checkNegateAtom
   ]
 
+getSpan :: NExprLocF r -> SrcSpan
+getSpan = annotation . getCompose
+
 check :: CheckBase -> Check
-check = collectingPara
+check base = collectingPara (\x -> Offense (getSpan x) <$> base x)
 
 checkAll :: Check
 checkAll = check $ mergeCheckBase checks
