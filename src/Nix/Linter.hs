@@ -85,10 +85,17 @@ checkListLiteralConcat = \case
   _ -> []
 
 
+isSetLiteral :: NExprLoc -> Bool
+isSetLiteral x = case (unFix x) of
+  NSet_ _ _ -> True 
+  NRecSet_ _ _ -> True 
+  _ -> False
+  
+
 checkSetLiteralUpdate :: CheckBase
 checkSetLiteralUpdate = \case
-  NBinary_ pos NUpdate (Fix (NSet_ _ _)) (Fix (NSet_ _ _)) ->
-    [Offense SetLiteralUpdate pos]
+  NBinary_ pos NUpdate e2 e1 ->
+    [Offense SetLiteralUpdate pos | all isSetLiteral [e1, e2]]
   _ -> []
 
 
