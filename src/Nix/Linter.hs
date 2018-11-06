@@ -122,6 +122,12 @@ checkNegateAtom = \case
   NUnary_ _ NNot (Fix (NConstant_ _ (NBool _))) -> [NegateAtom]
   _ -> []
 
+checkEtaReduce :: CheckBase
+checkEtaReduce = \case
+  NAbs_ _ (Param x) (Fix (NBinary_ _ NApp xs (Fix (NSym_ _ x')))) ->
+    [EtaReduce x | x == x', not $ hasRef x xs]
+  _ -> []
+
 checks :: [CheckBase]
 checks =
   [ checkUnneededRec
@@ -133,6 +139,7 @@ checks =
   , checkUpdateEmptySet
   -- , checkUnneededAntiquote
   , checkNegateAtom
+  , checkEtaReduce
   ]
 
 getSpan :: NExprLocF r -> SrcSpan

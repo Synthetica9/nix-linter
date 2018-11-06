@@ -44,4 +44,5 @@ data OffenseType
   | UpdateEmptySet
   | UnneededAntiquote
   | NegateAtom
+  | EtaReduce VarName
   deriving (Show)
