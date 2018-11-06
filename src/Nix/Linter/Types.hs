@@ -45,4 +45,5 @@ data OffenseType
   | UnneededAntiquote
   | NegateAtom
   | EtaReduce VarName
+  | FreeLetInFunc VarName
   deriving (Show)

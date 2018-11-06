@@ -128,6 +128,11 @@ checkEtaReduce = \case
     [EtaReduce x | x == x', not $ hasRef x xs]
   _ -> []
 
+checkFreeLetInFunc :: CheckBase
+checkFreeLetInFunc = \case
+  NAbs_ _ (Param x) (Fix (NLet_ _ xs _)) -> [FreeLetInFunc x | all (not . hasRef x) $ values xs]
+  _ -> []
+
 checks :: [CheckBase]
 checks =
   [ checkUnneededRec
@@ -140,6 +145,7 @@ checks =
   -- , checkUnneededAntiquote
   , checkNegateAtom
   , checkEtaReduce
+  , checkFreeLetInFunc
   ]
 
 getSpan :: NExprLocF r -> SrcSpan
