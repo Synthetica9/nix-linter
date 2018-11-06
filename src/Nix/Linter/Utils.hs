@@ -11,3 +11,5 @@ module Nix.Linter.Utils where
 choose :: [a] -> [(a, [a])]
 choose []       = []
 choose (x : xs) = (x, xs) : ((x :) <$$> choose xs)
+
+(...) = (.) . (.)

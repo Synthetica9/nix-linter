@@ -26,9 +26,10 @@ import           Nix.Linter.Utils
 
 maximumRepetitionsWithoutWith = 3
 
-hasRef :: VarName -> NExprLoc -> Bool
+hasRef, noRef :: VarName -> NExprLoc -> Bool
 hasRef name t = member name $ freeVars t
 
+noRef = not ... hasRef
 
 values :: [Binding r] -> [r]
 values = (f =<<)  where
@@ -43,8 +44,8 @@ checkUnusedLetBinding = \case
       (bind, others) -> case bind of
         NamedVar (StaticKey name :| []) _ _ -> [
             UnusedLetBind name
-            | not $ any (hasRef name) (values others)
-            , not $ hasRef name usedIn]
+            | all (noRef name) (values others)
+            , name `noRef` usedIn]
         _ -> []
   _ -> []
 
@@ -55,7 +56,7 @@ checkUnusedArg = \case
     names = filter (not . isPrefixOf "_") $ case params of
        Param name           -> [name]
        ParamSet xs _ global -> maybeToList global ++ (fst <$> xs)
-    in [UnusedArg name | name <- names, not $ hasRef name usedIn]
+    in [UnusedArg name | name <- names, name `noRef` usedIn]
   _ -> []
 
 
@@ -71,7 +72,7 @@ checkUnneededRec = \case
   NRecSet_ _ binds -> let
       needsRec = choose binds <&> \case
         (bind, others) -> case bind of
-          NamedVar (StaticKey name :| []) _ _ -> not $ any (hasRef name) (values others)
+          NamedVar (StaticKey name :| []) _ _ -> all (noRef name) (values others)
           _ -> False
     in [UnneededRec | not $ or needsRec]
   _ -> []
@@ -125,12 +126,12 @@ checkNegateAtom = \case
 checkEtaReduce :: CheckBase
 checkEtaReduce = \case
   NAbs_ _ (Param x) (Fix (NBinary_ _ NApp xs (Fix (NSym_ _ x')))) ->
-    [EtaReduce x | x == x', not $ hasRef x xs]
+    [EtaReduce x | x == x', x `noRef` xs]
   _ -> []
 
 checkFreeLetInFunc :: CheckBase
 checkFreeLetInFunc = \case
-  NAbs_ _ (Param x) (Fix (NLet_ _ xs _)) -> [FreeLetInFunc x | all (not . hasRef x) $ values xs]
+  NAbs_ _ (Param x) (Fix (NLet_ _ xs _)) -> [FreeLetInFunc x | all (noRef x) $ values xs]
   _ -> []
 
 checks :: [CheckBase]
