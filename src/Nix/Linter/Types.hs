@@ -46,4 +46,5 @@ data OffenseType
   | NegateAtom
   | EtaReduce VarName
   | FreeLetInFunc VarName
+  | LetInInheritRecset VarName
   deriving (Show)

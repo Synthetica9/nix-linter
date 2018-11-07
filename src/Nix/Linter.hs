@@ -134,6 +134,40 @@ checkFreeLetInFunc = \case
   NAbs_ _ (Param x) (Fix (NLet_ _ xs _)) -> [FreeLetInFunc x | all (noRef x) $ values xs]
   _ -> []
 
+staticKeys :: [NKeyName x] -> [VarName]
+staticKeys xs = do
+  StaticKey x <- xs
+  pure x
+
+simpleBoundNames :: Binding x -> [VarName]
+simpleBoundNames (NamedVar (StaticKey x :| []) _ _) = [x]
+simpleBoundNames (Inherit _ xs _)                   = staticKeys xs
+
+plainInherits :: VarName -> [Binding x] -> Bool
+plainInherits x xs = or $ do
+  Inherit Nothing ys _ <- xs
+  pure $ x `elem` staticKeys ys
+
+
+checkLetInInheritRecset :: CheckBase
+checkLetInInheritRecset = \case
+  NLet_ _ binds usedIn -> case (unFix $ topNonLinear usedIn) of
+    NRecSet_ _ set -> choose binds >>= \case
+      (this, others) -> let
+          names = simpleBoundNames this
+          allNamesFree x = all (`noRef` x) names
+          othersFree = all allNamesFree (values others)
+        in [LetInInheritRecset name | name <- names, plainInherits name set, othersFree]
+    _ -> []
+  _ -> []
+
+-- TODO: use standard (para?) morphism
+topNonLinear :: NExprLoc -> NExprLoc
+topNonLinear (Fix (NBinary_ _ NApp f x)) = topNonLinear x
+topNonLinear x                           = x
+
+
+
 checks :: [CheckBase]
 checks =
   [ checkUnneededRec
@@ -147,6 +181,7 @@ checks =
   , checkNegateAtom
   , checkEtaReduce
   , checkFreeLetInFunc
+  , checkLetInInheritRecset
   ]
 
 getSpan :: NExprLocF r -> SrcSpan
