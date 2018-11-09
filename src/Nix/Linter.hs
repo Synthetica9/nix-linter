@@ -8,6 +8,7 @@ module Nix.Linter where
 import           Control.Monad
 import           Data.Fix
 import           Data.Foldable            (fold)
+import           Data.List                (find)
 import           Data.List.NonEmpty       (NonEmpty (..))
 import           Data.Maybe
 import           Data.Set                 (member)
@@ -21,6 +22,7 @@ import           Nix.Expr.Types.Annotated
 import           Nix.TH                   (freeVars)
 
 import           Nix.Linter.Morphisms
+import           Nix.Linter.Traversals
 import           Nix.Linter.Types
 import           Nix.Linter.Utils
 
@@ -30,6 +32,27 @@ hasRef, noRef :: VarName -> NExprLoc -> Bool
 hasRef name t = member name $ freeVars t
 
 noRef = not ... hasRef
+
+getFreeVar :: NExprLoc -> VarName
+getFreeVar x = let
+    candidates = pack . ("_freeVar" ++) . show <$> [1..]
+    -- We are guarranteed to find a good candidate, because candidates is
+    -- infinite and x is strict
+    Just var = find (not . (`member` freeVars x)) candidates
+  in var
+
+generatedPos :: SourcePos
+generatedPos = let z = mkPos 1 in SourcePos "<generated!>" z z
+
+generated :: SrcSpan
+generated = join SrcSpan generatedPos
+
+chooseTrees :: NExprLoc -> [(NExprLoc, NExprLoc)]
+chooseTrees e = do
+  let varname = getFreeVar e
+  (inner, outer) <- contextList e
+  let var = Fix $ NSym_ generated varname
+  pure (inner, outer var)
 
 values :: [Binding r] -> [r]
 values = (f =<<)  where
@@ -151,22 +174,16 @@ plainInherits x xs = or $ do
 
 checkLetInInheritRecset :: CheckBase
 checkLetInInheritRecset = \case
-  NLet_ _ binds usedIn -> case (unFix $ topNonLinear usedIn) of
-    NRecSet_ _ set -> choose binds >>= \case
+  NLet_ _ binds usedIn -> chooseTrees usedIn >>= \case
+    (Fix (NRecSet_ _ set), outer) -> choose binds >>= \case
       (this, others) -> let
           names = simpleBoundNames this
           allNamesFree x = all (`noRef` x) names
           othersFree = all allNamesFree (values others)
+            && allNamesFree outer
         in [LetInInheritRecset name | name <- names, plainInherits name set, othersFree]
     _ -> []
   _ -> []
-
--- TODO: use standard (para?) morphism
-topNonLinear :: NExprLoc -> NExprLoc
-topNonLinear (Fix (NBinary_ _ NApp f x)) = topNonLinear x
-topNonLinear x                           = x
-
-
 
 checks :: [CheckBase]
 checks =
