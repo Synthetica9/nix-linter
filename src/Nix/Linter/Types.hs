@@ -47,4 +47,5 @@ data OffenseType
   | EtaReduce VarName
   | FreeLetInFunc VarName
   | LetInInheritRecset VarName
+  | DIYInherit VarName
   deriving (Show)

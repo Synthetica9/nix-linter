@@ -8,7 +8,6 @@ import qualified Data.Generics.Fixplate            as F
 import           Control.Arrow                     ((&&&), (***))
 import qualified Data.Generics.Fixplate.Traversals as T
 
--- TODO: use unsafecoerce?
 fixToMu :: Functor f => Fix f -> F.Mu f
 fixToMu = F.Fix . fmap fixToMu . unFix
 

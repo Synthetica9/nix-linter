@@ -33,13 +33,26 @@ hasRef name t = member name $ freeVars t
 
 noRef = not ... hasRef
 
-getFreeVar :: NExprLoc -> VarName
-getFreeVar x = let
+getFreeVarName :: NExprLoc -> VarName
+getFreeVarName x = let
     candidates = pack . ("_freeVar" ++) . show <$> [1..]
     -- We are guarranteed to find a good candidate, because candidates is
     -- infinite and x is strict
     Just var = find (not . (`member` freeVars x)) candidates
   in var
+
+getFreeVar :: NExprLoc -> NExprLoc
+getFreeVar = Fix . NSym_ generated . getFreeVarName
+
+topLevelBinds :: NExprLoc -> ([Binding NExprLoc], NExprLoc)
+topLevelBinds e = case unFix e of
+  -- `let x = 1; y = x; in y` is valid, so e is the context!
+  NLet_    _ xs _ -> (xs, e)
+  NRecSet_ _ xs   -> (xs, e)
+  -- Nonrecursive, so no context. We make up a context that can't possibly be valid.
+  NSet_    _ xs   -> (xs, getFreeVar e)
+  -- Otherwise, our context is just empty!
+  _               -> ([], e)
 
 generatedPos :: SourcePos
 generatedPos = let z = mkPos 1 in SourcePos "<generated!>" z z
@@ -49,10 +62,8 @@ generated = join SrcSpan generatedPos
 
 chooseTrees :: NExprLoc -> [(NExprLoc, NExprLoc)]
 chooseTrees e = do
-  let varname = getFreeVar e
   (inner, outer) <- contextList e
-  let var = Fix $ NSym_ generated varname
-  pure (inner, outer var)
+  pure (inner, outer $ getFreeVar e)
 
 values :: [Binding r] -> [r]
 values = (f =<<)  where
@@ -171,6 +182,10 @@ plainInherits x xs = or $ do
   Inherit Nothing ys _ <- xs
   pure $ x `elem` staticKeys ys
 
+checkDIYInherit :: CheckBase
+checkDIYInherit x = (fst . topLevelBinds $ Fix x) >>= \case
+  (NamedVar (StaticKey x :| []) (Fix (NSym_ _ x')) _) -> [DIYInherit x | x == x']
+  _ -> []
 
 checkLetInInheritRecset :: CheckBase
 checkLetInInheritRecset = \case
@@ -199,6 +214,7 @@ checks =
   , checkEtaReduce
   , checkFreeLetInFunc
   , checkLetInInheritRecset
+  , checkDIYInherit
   ]
 
 getSpan :: NExprLocF r -> SrcSpan
