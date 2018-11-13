@@ -87,4 +87,5 @@ data OffenseCategory
   | LetInInheritRecset VarName
   | DIYInherit VarName
   | EmptyLet
+  | UnfortunateArgName VarName VarName
   deriving (Show)

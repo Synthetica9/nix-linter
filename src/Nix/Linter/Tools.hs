@@ -75,5 +75,8 @@ plainInherits x xs = or $ do
   Inherit Nothing ys _ <- xs
   pure $ x `elem` staticKeys ys
 
+plainInheritsAnywhere :: VarName -> NExprLoc -> Bool
+plainInheritsAnywhere x e = any (plainInherits x . fst . topLevelBinds) $ universe e
+
 nonIgnoredName :: VarName -> Bool
 nonIgnoredName x = not $ isPrefixOf "_" x
