@@ -10,8 +10,10 @@ import           Control.Monad            (join)
 import           Data.Fix
 import           Data.Maybe               (catMaybes)
 
+import           Data.Foldable            (for_)
 import           Nix.Expr.Types
 import           Nix.Expr.Types.Annotated
+import           Nix.Parser
 
 import           Nix.Linter.Traversals
 import           Nix.Render
@@ -23,6 +25,18 @@ data OffenseF a = Offense
   , pos       :: SrcSpan
   , offense   :: a
   } deriving (Functor, Show)
+
+setLoc :: SourcePos -> Offense -> Offense
+setLoc l x = x { pos=singletonSpan l }
+
+setPos :: SrcSpan -> Offense -> Offense
+setPos l x = x { pos=l }
+
+setOffender :: NExprLoc -> Offense -> Offense
+setOffender e x = setPos (getPos e) $ x {offending=e}
+
+suggest :: NExpr -> Offense -> Offense
+suggest e x = x {rewrite = pure e}
 
 getPos :: NExprLoc -> SrcSpan
 getPos = annotation . getCompose . unFix
