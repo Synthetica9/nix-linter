@@ -96,7 +96,7 @@ checkNegateAtom warn e= [warn NegateAtom & suggest (mkBool $ not b)
   ]
 
 checkEtaReduce :: CheckBase
-checkEtaReduce warn e = [ warn (EtaReduce x)
+checkEtaReduce warn e = [ warn (EtaReduce x) & suggest' xs
   | NAbs_ _ (Param x) e' <- [unFix e]
   , NBinary_ _ NApp xs e'' <- [unFix e']
   , NSym_ _ x' <- [unFix e'']
