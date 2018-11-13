@@ -5,7 +5,7 @@ module Nix.Linter.Traversals (contextList, universe) where
 import           Data.Fix
 import qualified Data.Generics.Fixplate            as F
 
-import           Control.Arrow                     ((&&&), (***))
+import           Control.Arrow                     ((***))
 import qualified Data.Generics.Fixplate.Traversals as T
 
 fixToMu :: Functor f => Fix f -> F.Mu f
