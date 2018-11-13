@@ -16,7 +16,7 @@ import           Nix.Expr.Types.Annotated
 
 import           Nix.Linter.Tools
 import           Nix.Linter.Types
-import           Nix.Linter.Utils         (choose, (<&>))
+import           Nix.Linter.Utils         (choose, (<$$>), (<&>))
 
 
 checkUnusedLetBinding :: CheckBase
@@ -105,14 +105,15 @@ checkEtaReduce warn e = [ warn (EtaReduce x) & suggest' xs
   ]
 
 checkFreeLetInFunc :: CheckBase
-checkFreeLetInFunc warn e = [ (warn (FreeLetInFunc x)) {pos=getPos e'}
+checkFreeLetInFunc warn e = [ warn (FreeLetInFunc x)
+  & suggest (mkLets (stripAnnotation <$$> xs) $ mkFunction (Param x) $ stripAnnotation e'')
   | NAbs_ _ (Param x) e' <- [unFix e]
-  , NLet_ _ xs _ <- [unFix e']
+  , NLet_ _ xs e'' <- [unFix e']
   , all (noRef x) $ values xs
   ]
 
 checkDIYInherit :: CheckBase
-checkDIYInherit warn e = [ (warn $ DIYInherit x) { pos=singletonSpan loc}
+checkDIYInherit warn e = [ setLoc loc $ warn $ DIYInherit x
   | (binds, _) <- [topLevelBinds e]
   , NamedVar (StaticKey x :| []) e' loc <- binds
   , NSym_ _ x' <- [unFix e']
@@ -133,6 +134,11 @@ checkLetInInheritRecset warn e = [(warn $ LetInInheritRecset name)
   , allNamesFree outer
   ]
 
+checkEmptyLet :: CheckBase
+checkEmptyLet warn e = [ warn EmptyLet & suggest' e'
+  | NLet_ _ [] e' <- [unFix e]
+  ]
+
 checks :: [CheckBase]
 checks =
   [ checkUnusedLetBinding
@@ -148,6 +154,7 @@ checks =
   , checkFreeLetInFunc
   , checkLetInInheritRecset
   , checkDIYInherit
+  , checkEmptyLet
   ]
 
 checkAll :: Check
