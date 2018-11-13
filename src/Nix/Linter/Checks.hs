@@ -139,6 +139,20 @@ checkEmptyLet warn e = [ warn EmptyLet & suggest' e'
   | NLet_ _ [] e' <- [unFix e]
   ]
 
+checkUnfortunateArgName :: CheckBase
+checkUnfortunateArgName warn e = [ warn (UnfortunateArgName name name')
+  | NAbs_ _ (Param name) e' <- [unFix e]
+  , (inner, outer) <- chooseTrees e'
+  , (bindings, context) <- [topLevelBinds inner]
+  , not $ plainInheritsAnywhere name (Fix $ NRecSet_ generated bindings)
+  , not $ plainInheritsAnywhere name context
+  , not $ plainInheritsAnywhere name outer
+  , NamedVar (StaticKey name' :| []) e'' _ <- bindings
+  , name' /= name
+  , NSym_ _ name'' <- [unFix e'']
+  , name'' == name
+  ]
+
 checks :: [CheckBase]
 checks =
   [ checkUnusedLetBinding
@@ -155,6 +169,7 @@ checks =
   , checkLetInInheritRecset
   , checkDIYInherit
   , checkEmptyLet
+  , checkUnfortunateArgName
   ]
 
 checkAll :: Check
