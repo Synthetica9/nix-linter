@@ -8,15 +8,11 @@ module Nix.Linter.Types where
 
 import           Control.Monad            (join)
 import           Data.Fix
-import           Data.Maybe               (catMaybes)
 
-import           Data.Foldable            (for_)
 import           Nix.Expr.Types
 import           Nix.Expr.Types.Annotated
-import           Nix.Parser
 
 import           Nix.Linter.Traversals
-import           Nix.Render
 import           Text.Megaparsec.Pos      (unPos)
 
 data OffenseF a = Offense

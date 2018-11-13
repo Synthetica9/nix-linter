@@ -6,10 +6,8 @@ module Main where
 import           Data.Foldable
 import           System.Environment
 
-import           Nix.Expr.Types.Annotated (stripAnnotation)
 import           Nix.Parser
 import           Nix.Pretty
-import           Nix.Render
 
 import           Nix.Linter
 import           Nix.Linter.Types
