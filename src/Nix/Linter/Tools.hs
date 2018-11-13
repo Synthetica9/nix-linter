@@ -21,7 +21,7 @@ noRef = not ... hasRef
 
 getFreeVarName :: NExprLoc -> VarName
 getFreeVarName x = let
-    candidates = pack . ("_freeVar" ++) . show <$> [1..]
+    candidates = pack . ("_freeVar" ++) . show <$> ([1..] :: [Integer])
     -- We are guarranteed to find a good candidate, because candidates is
     -- infinite and x is strict
     Just var = find (not . (`member` freeVars x)) candidates
@@ -65,6 +65,7 @@ staticKeys xs = do
 simpleBoundNames :: Binding x -> [VarName]
 simpleBoundNames (NamedVar (StaticKey x :| []) _ _) = [x]
 simpleBoundNames (Inherit _ xs _)                   = staticKeys xs
+simpleBoundNames _                                  = []
 
 plainInherits :: VarName -> [Binding x] -> Bool
 plainInherits x xs = or $ do
