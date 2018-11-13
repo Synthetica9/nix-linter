@@ -1,3 +1,6 @@
+{-# LANGUAGE OverloadedStrings #-}
+
+
 module Nix.Linter.Tools where
 
 import           Control.Monad            (join)
@@ -5,7 +8,7 @@ import           Data.Fix
 import           Data.List                (find)
 import           Data.List.NonEmpty       (NonEmpty (..))
 import           Data.Set                 (member)
-import           Data.Text                (pack)
+import           Data.Text                (isPrefixOf, pack)
 
 import           Nix.Expr.Types
 import           Nix.Expr.Types.Annotated
@@ -71,3 +74,6 @@ plainInherits :: VarName -> [Binding x] -> Bool
 plainInherits x xs = or $ do
   Inherit Nothing ys _ <- xs
   pure $ x `elem` staticKeys ys
+
+nonIgnoredName :: VarName -> Bool
+nonIgnoredName x = not $ isPrefixOf "_" x

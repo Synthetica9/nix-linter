@@ -34,6 +34,7 @@ checkUnusedArg warn e = [ warn (UnusedArg name)
  , name <- case params of
     Param name           -> [name]
     ParamSet xs _ global -> maybeToList global ++ (fst <$> xs)
+  , nonIgnoredName name
   , name `noRef` usedIn
   ]
 
