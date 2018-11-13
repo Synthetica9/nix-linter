@@ -34,6 +34,9 @@ setOffender e x = setPos (getPos e) $ x {offending=e}
 suggest :: NExpr -> Offense -> Offense
 suggest e x = x {rewrite = pure e}
 
+suggest' :: NExprLoc -> Offense -> Offense
+suggest' e = suggest $ stripAnnotation e
+
 getPos :: NExprLoc -> SrcSpan
 getPos = annotation . getCompose . unFix
 
