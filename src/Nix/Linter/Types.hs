@@ -86,4 +86,5 @@ data OffenseCategory
   | FreeLetInFunc VarName
   | LetInInheritRecset VarName
   | DIYInherit VarName
+  | EmptyLet
   deriving (Show)
