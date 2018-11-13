@@ -3,22 +3,25 @@
 
 module Nix.Linter.Tools where
 
-import           Control.Monad            (join)
+import           Control.Monad             (join)
 import           Data.Fix
-import           Data.List                (find)
-import           Data.List.NonEmpty       (NonEmpty (..))
-import           Data.Set                 (member)
-import           Data.Text                (isPrefixOf, pack)
+import           Data.List                 (find)
+import           Data.List.NonEmpty        (NonEmpty (..))
+import           Data.Set                  (member)
+import           Data.Text                 (isPrefixOf, pack)
 
 import           Nix.Expr.Types
 import           Nix.Expr.Types.Annotated
-import           Nix.TH
+
+-- import           Nix.TH
+import           Nix.Linter.Tools.FreeVars
 
 import           Nix.Linter.Traversals
 import           Nix.Linter.Utils
 
+
 hasRef, noRef :: VarName -> NExprLoc -> Bool
-hasRef name t = member name $ freeVars t
+hasRef name t = member name $ freeVars' t
 
 noRef = not ... hasRef
 
@@ -27,7 +30,7 @@ getFreeVarName x = let
     candidates = pack . ("_freeVar" ++) . show <$> ([1..] :: [Integer])
     -- We are guarranteed to find a good candidate, because candidates is
     -- infinite and x is strict
-    Just var = find (not . (`member` freeVars x)) candidates
+    Just var = find (not . (`member` freeVars' x)) candidates
   in var
 
 
