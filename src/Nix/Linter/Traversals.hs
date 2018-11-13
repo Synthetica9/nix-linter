@@ -1,5 +1,5 @@
 -- | Functions ported to Data.Fix from Data.Generics.Fixplate (ported as I need them)
-module Nix.Linter.Traversals (contextList) where
+module Nix.Linter.Traversals (contextList, universe) where
 
 
 import           Data.Fix
@@ -16,3 +16,8 @@ muToFix = Fix . fmap muToFix . F.unFix
 
 contextList :: Traversable f => Fix f -> [(Fix f, Fix f -> Fix f)]
 contextList = fmap (muToFix *** ((muToFix .) . (. fixToMu))) . T.contextList . fixToMu
+
+-- If the functor constraint ever gives the slightest problem, I'm goingo change
+-- fixToMu and muToFix to just use unsafeCoerce instead.
+universe :: (Foldable f, Functor f) => Fix f -> [Fix f]
+universe = fmap muToFix . T.universe . fixToMu
