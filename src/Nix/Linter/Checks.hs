@@ -144,13 +144,16 @@ checkUnfortunateArgName warn e = [ warn (UnfortunateArgName name name')
   | NAbs_ _ (Param name) e' <- [unFix e]
   , (inner, outer) <- chooseTrees e'
   , (bindings, context) <- [topLevelBinds inner]
-  , not $ plainInheritsAnywhere name (Fix $ NRecSet_ generated bindings)
-  , not $ plainInheritsAnywhere name context
-  , not $ plainInheritsAnywhere name outer
   , NamedVar (StaticKey name' :| []) e'' _ <- bindings
   , name' /= name
   , NSym_ _ name'' <- [unFix e'']
   , name'' == name
+
+  , let valid = not . plainInheritsAnywhere name
+  -- These are expensive! Do them last:
+  , valid context
+  , valid $ Fix $ NRecSet_ generated bindings
+  , valid outer
   ]
 
 checks :: [CheckBase]
