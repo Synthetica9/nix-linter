@@ -8,6 +8,7 @@ module Nix.Linter.Types where
 
 import           Control.Monad            (join)
 import           Data.Fix
+import           Data.Text                (Text)
 
 import           Nix.Expr.Types
 import           Nix.Expr.Types.Annotated
@@ -19,8 +20,13 @@ data OffenseF a = Offense
   { offending :: NExprLoc
   , rewrite   :: Maybe NExpr -- Location info isn't important here, because none of it will be accurate.
   , pos       :: SrcSpan
+  , notes     :: [Note]
   , offense   :: a
   } deriving (Functor, Show)
+
+data Note
+  = IncreasesGenerality
+  | Note Text Text deriving Show
 
 setLoc :: SourcePos -> Offense -> Offense
 setLoc l x = x { pos=singletonSpan l }
@@ -37,6 +43,12 @@ suggest e x = x {rewrite = pure e}
 suggest' :: NExprLoc -> Offense -> Offense
 suggest' e = suggest $ stripAnnotation e
 
+note :: Note -> Offense -> Offense
+note n x = x {notes = n : notes x}
+
+note' :: Text -> Text -> Offense -> Offense
+note' a b = note $ Note a b
+
 getPos :: NExprLoc -> SrcSpan
 getPos = annotation . getCompose . unFix
 
@@ -52,7 +64,7 @@ getSpan :: NExprLoc -> SrcSpan
 getSpan = annotation . getCompose . unFix
 
 check :: CheckBase -> Check
-check base tree = (\e -> base (Offense e Nothing (getSpan e)) e) =<< universe tree
+check base tree = (\e -> base (Offense e Nothing (getSpan e) []) e) =<< universe tree
 
 prettySourcePos :: SourcePos -> String
 prettySourcePos (SourcePos file l c) = file ++ ":" ++ show (unPos l) ++ ":" ++ show (unPos c)
@@ -73,8 +85,8 @@ prettyOffense (Offense {..}) = show offense ++ " at " ++ prettySourceSpan pos
 
 data OffenseCategory
   = RepetitionWithoutWith
-  | UnusedLetBind VarName
-  | UnusedArg VarName
+  | UnusedLetBind
+  | UnusedArg
   | EmptyInherit
   | UnneededRec
   | ListLiteralConcat
@@ -82,10 +94,10 @@ data OffenseCategory
   | UpdateEmptySet
   | UnneededAntiquote
   | NegateAtom
-  | EtaReduce VarName
-  | FreeLetInFunc VarName
-  | LetInInheritRecset VarName
-  | DIYInherit VarName
+  | EtaReduce
+  | FreeLetInFunc
+  | LetInInheritRecset
+  | DIYInherit
   | EmptyLet
-  | UnfortunateArgName VarName VarName
+  | UnfortunateArgName
   deriving (Show)

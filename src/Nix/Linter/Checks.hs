@@ -1,10 +1,14 @@
-{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE LambdaCase        #-}
+{-# LANGUAGE OverloadedStrings #-}
+
 
 module Nix.Linter.Checks where
 
 import           Data.Function            ((&))
+import           Data.List                (sortOn)
 import           Data.List.NonEmpty       (NonEmpty (..))
 import           Data.Maybe               (maybeToList)
+import           Data.Text                (Text (..))
 
 import           Data.Fix
 import           Data.Pair
@@ -18,9 +22,13 @@ import           Nix.Linter.Tools
 import           Nix.Linter.Types
 import           Nix.Linter.Utils         (choose, (<$$>), (<&>))
 
+varName :: Text
+varName = "varName"
 
 checkUnusedLetBinding :: CheckBase
-checkUnusedLetBinding warn e = [ (warn (UnusedLetBind name)) {pos=singletonSpan loc}
+checkUnusedLetBinding warn e = [ (warn UnusedLetBind)
+  & setLoc loc
+  & note' varName name
   | NLet_ _ binds usedIn <- [unFix e]
   , (bind, others) <- choose binds
   , NamedVar (StaticKey name :| []) _ loc <- [bind]
@@ -29,7 +37,8 @@ checkUnusedLetBinding warn e = [ (warn (UnusedLetBind name)) {pos=singletonSpan 
   ]
 
 checkUnusedArg :: CheckBase
-checkUnusedArg warn e = [ warn (UnusedArg name)
+checkUnusedArg warn e = [ warn UnusedArg
+  & note' varName name
  | NAbs_ _ params usedIn <- [unFix e]
  , name <- case params of
     Param name           -> [name]
@@ -96,7 +105,8 @@ checkNegateAtom warn e= [warn NegateAtom & suggest (mkBool $ not b)
   ]
 
 checkEtaReduce :: CheckBase
-checkEtaReduce warn e = [ warn (EtaReduce x) & suggest' xs
+checkEtaReduce warn e = [ warn EtaReduce & suggest' xs
+  & note' varName x
   | NAbs_ _ (Param x) e' <- [unFix e]
   , NBinary_ _ NApp xs e'' <- [unFix e']
   , NSym_ _ x' <- [unFix e'']
@@ -105,7 +115,8 @@ checkEtaReduce warn e = [ warn (EtaReduce x) & suggest' xs
   ]
 
 checkFreeLetInFunc :: CheckBase
-checkFreeLetInFunc warn e = [ warn (FreeLetInFunc x)
+checkFreeLetInFunc warn e = [ warn FreeLetInFunc
+  & note' varName x
   & suggest (mkLets (stripAnnotation <$$> xs) $ mkFunction (Param x) $ stripAnnotation e'')
   | NAbs_ _ (Param x) e' <- [unFix e]
   , NLet_ _ xs e'' <- [unFix e']
@@ -113,7 +124,9 @@ checkFreeLetInFunc warn e = [ warn (FreeLetInFunc x)
   ]
 
 checkDIYInherit :: CheckBase
-checkDIYInherit warn e = [ setLoc loc $ warn $ DIYInherit x
+checkDIYInherit warn e = [ warn DIYInherit
+  & setLoc loc
+  & note' varName x
   | (binds, _) <- [topLevelBinds e]
   , NamedVar (StaticKey x :| []) e' loc <- binds
   , NSym_ _ x' <- [unFix e']
@@ -121,7 +134,8 @@ checkDIYInherit warn e = [ setLoc loc $ warn $ DIYInherit x
   ]
 
 checkLetInInheritRecset :: CheckBase
-checkLetInInheritRecset warn e = [(warn $ LetInInheritRecset name)
+checkLetInInheritRecset warn e = [ warn LetInInheritRecset
+  & note' varName name
   | NLet_ _ binds usedIn <- [unFix e]
   , (inner, outer) <- chooseTrees usedIn
   , NRecSet_ _ set <- [unFix inner]
@@ -140,7 +154,8 @@ checkEmptyLet warn e = [ warn EmptyLet & suggest' e'
   ]
 
 checkUnfortunateArgName :: CheckBase
-checkUnfortunateArgName warn e = [ warn (UnfortunateArgName name name')
+checkUnfortunateArgName warn e = [ warn UnfortunateArgName
+  & note' "now" name & note' "suggested" name'
   | NAbs_ _ (Param name) e' <- [unFix e]
   , (inner, outer) <- chooseTrees e'
   , (bindings, context) <- [topLevelBinds inner]
@@ -156,24 +171,31 @@ checkUnfortunateArgName warn e = [ warn (UnfortunateArgName name name')
   , valid outer
   ]
 
-checks :: [CheckBase]
-checks =
-  [ checkUnusedLetBinding
-  , checkUnusedArg
-  , checkEmptyInherit
-  , checkUnneededRec
-  , checkListLiteralConcat
-  , checkSetLiteralUpdate
-  , checkUpdateEmptySet
-  -- , checkUnneededAntiquote
-  , checkNegateAtom
-  , checkEtaReduce
-  , checkFreeLetInFunc
-  , checkLetInInheritRecset
-  , checkDIYInherit
-  , checkEmptyLet
-  , checkUnfortunateArgName
+data AvailableCheck = AvailableCheck
+  { name           :: String
+  , baseCheck      :: CheckBase
+  , defaultEnabled :: Bool
+  , description    :: String
+  }
+
+checks :: [AvailableCheck]
+checks = sortOn name
+  [ AvailableCheck "UnusedLetBinding" checkUnusedLetBinding True ""
+  , AvailableCheck "UnusedArg" checkUnusedArg True ""
+  , AvailableCheck "EmptyInherit" checkEmptyInherit True ""
+  , AvailableCheck "UnneededRec" checkUnneededRec True ""
+  , AvailableCheck "ListLiteralConcat" checkListLiteralConcat True ""
+  , AvailableCheck "SetLiteralUpdate" checkSetLiteralUpdate True ""
+  , AvailableCheck "UpdateEmptySet" checkUpdateEmptySet True ""
+  , AvailableCheck "UnneededAntiquote" checkUnneededAntiquote True ""
+  , AvailableCheck "NegateAtom" checkNegateAtom True ""
+  , AvailableCheck "EtaReduce" checkEtaReduce True ""
+  , AvailableCheck "FreeLetInFunc" checkFreeLetInFunc True ""
+  , AvailableCheck "LetInInheritRecset" checkLetInInheritRecset True ""
+  , AvailableCheck "DIYInherit" checkDIYInherit True ""
+  , AvailableCheck "EmptyLet" checkEmptyLet True ""
+  , AvailableCheck "UnfortunateArgName" checkUnfortunateArgName True ""
   ]
 
 checkAll :: Check
-checkAll e = (check <$> checks) >>= ($ e)
+checkAll e = ((check . baseCheck) <$> checks) >>= ($ e)

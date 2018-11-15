@@ -1,5 +1,5 @@
-{-# LANGUAGE RecordWildCards #-}
-
+{-# LANGUAGE DeriveDataTypeable #-}
+{-# LANGUAGE RecordWildCards    #-}
 
 module Main where
 
@@ -12,10 +12,39 @@ import           Nix.Pretty
 import           Nix.Linter
 import           Nix.Linter.Types
 
-main :: IO ()
-main = do
-  args <- getArgs
-  for_ args (runCheck checkAll)
+import           System.Console.CmdArgs
+
+data NixLinter = NixLinter
+  {
+    checks    :: [(String, Bool)]
+  , json      :: Bool
+  , file_list :: Bool
+  , out       :: FilePath
+  , files     :: [FilePath]
+  } deriving (Show, Data, Typeable)
+
+
+nixLinter = NixLinter
+  {
+    checks = def
+  , json  = def &= help "Use JSON output"
+  , file_list = def &= help "Read files to process (like xargs)"
+  , out = def &= help "File to output to" &= typ "FILE"
+  , files = def &= args &= typ "FILES"
+  } &= verbosity &= details (mkChecksHelp Nix.Linter.checks)
+
+mkChecksHelp :: [AvailableCheck] -> [String]
+mkChecksHelp xs = "Available checks:" : (mkDetails <$> xs) where
+  mkDetails (AvailableCheck{..}) = "    " ++ name ++ mkDis defaultEnabled
+  mkDis False = " (disabled by default)"
+  mkDis _     = ""
+
+main = print =<< cmdArgs nixLinter
+-- main :: IO ()
+-- main = do
+--   args <- getArgs
+--   for_ args (runCheck checkAll)
+
 
 
 runCheck :: Check -> FilePath -> IO ()
