@@ -1,4 +1,8 @@
+{-# LANGUAGE DeriveDataTypeable   #-}
 {-# LANGUAGE DeriveFunctor        #-}
+{-# LANGUAGE DeriveGeneric        #-}
+{-# LANGUAGE OverloadedStrings    #-}
+
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE KindSignatures       #-}
 {-# LANGUAGE RecordWildCards      #-}
@@ -8,10 +12,15 @@ module Nix.Linter.Types where
 
 import           Control.Monad            (join)
 import           Data.Fix
-import           Data.Text                (Text)
+import           Data.Text                (Text (..), pack)
+
+import           Data.Aeson
+import           GHC.Generics
+import           System.Console.CmdArgs   (Data)
 
 import           Nix.Expr.Types
 import           Nix.Expr.Types.Annotated
+import           Nix.Pretty               (prettyNix)
 
 import           Nix.Linter.Traversals
 import           Text.Megaparsec.Pos      (unPos)
@@ -22,11 +31,25 @@ data OffenseF a = Offense
   , pos       :: SrcSpan
   , notes     :: [Note]
   , offense   :: a
-  } deriving (Functor, Show)
+  } deriving (Functor, Show, Generic)
+
+type Offense = OffenseF OffenseCategory
+type Check = NExprLoc -> [Offense]
+
+instance ToJSON Offense
+
+
+instance ToJSON NExprLoc where
+  toJSON e = object
+    [ "location" .= toJSON (getPos e)
+    , "content" .= (pack . show . prettyNix $ stripAnnotation e)
+    ]
 
 data Note
   = IncreasesGenerality
-  | Note Text Text deriving Show
+  | Note Text Text deriving (Show, Generic)
+
+instance ToJSON Note
 
 setLoc :: SourcePos -> Offense -> Offense
 setLoc l x = x { pos=singletonSpan l }
@@ -51,9 +74,6 @@ note' a b = note $ Note a b
 
 getPos :: NExprLoc -> SrcSpan
 getPos = annotation . getCompose . unFix
-
-type Offense = OffenseF OffenseCategory
-type Check = NExprLoc -> [Offense]
 
 -- For ease of pattern matching
 type UnwrappedNExprLoc = NExprLocF (Fix NExprLocF)
@@ -100,4 +120,6 @@ data OffenseCategory
   | DIYInherit
   | EmptyLet
   | UnfortunateArgName
-  deriving (Show)
+  deriving (Show, Generic, Data, Ord, Eq)
+
+instance ToJSON OffenseCategory

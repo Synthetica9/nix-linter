@@ -172,30 +172,30 @@ checkUnfortunateArgName warn e = [ warn UnfortunateArgName
   ]
 
 data AvailableCheck = AvailableCheck
-  { name           :: String
+  { category       :: OffenseCategory
   , baseCheck      :: CheckBase
   , defaultEnabled :: Bool
   , description    :: String
   }
 
 checks :: [AvailableCheck]
-checks = sortOn name
-  [ AvailableCheck "UnusedLetBinding" checkUnusedLetBinding True ""
-  , AvailableCheck "UnusedArg" checkUnusedArg True ""
-  , AvailableCheck "EmptyInherit" checkEmptyInherit True ""
-  , AvailableCheck "UnneededRec" checkUnneededRec True ""
-  , AvailableCheck "ListLiteralConcat" checkListLiteralConcat True ""
-  , AvailableCheck "SetLiteralUpdate" checkSetLiteralUpdate True ""
-  , AvailableCheck "UpdateEmptySet" checkUpdateEmptySet True ""
-  , AvailableCheck "UnneededAntiquote" checkUnneededAntiquote True ""
-  , AvailableCheck "NegateAtom" checkNegateAtom True ""
-  , AvailableCheck "EtaReduce" checkEtaReduce True ""
-  , AvailableCheck "FreeLetInFunc" checkFreeLetInFunc True ""
-  , AvailableCheck "LetInInheritRecset" checkLetInInheritRecset True ""
-  , AvailableCheck "DIYInherit" checkDIYInherit True ""
-  , AvailableCheck "EmptyLet" checkEmptyLet True ""
-  , AvailableCheck "UnfortunateArgName" checkUnfortunateArgName True ""
+checks = sortOn category
+  [ AvailableCheck UnusedLetBind checkUnusedLetBinding True ""
+  , AvailableCheck UnusedArg checkUnusedArg True ""
+  , AvailableCheck EmptyInherit checkEmptyInherit True ""
+  , AvailableCheck UnneededRec checkUnneededRec True ""
+  , AvailableCheck ListLiteralConcat checkListLiteralConcat True ""
+  , AvailableCheck SetLiteralUpdate checkSetLiteralUpdate True ""
+  , AvailableCheck UpdateEmptySet checkUpdateEmptySet True ""
+  , AvailableCheck UnneededAntiquote checkUnneededAntiquote True ""
+  , AvailableCheck NegateAtom checkNegateAtom True ""
+  , AvailableCheck EtaReduce checkEtaReduce True ""
+  , AvailableCheck FreeLetInFunc checkFreeLetInFunc True ""
+  , AvailableCheck LetInInheritRecset checkLetInInheritRecset True ""
+  , AvailableCheck DIYInherit checkDIYInherit True ""
+  , AvailableCheck EmptyLet checkEmptyLet True ""
+  , AvailableCheck UnfortunateArgName checkUnfortunateArgName True ""
   ]
 
-checkAll :: Check
-checkAll e = ((check . baseCheck) <$> checks) >>= ($ e)
+combineChecks :: [CheckBase] -> Check
+combineChecks c e = (check <$> c) >>= ($ e)
