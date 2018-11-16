@@ -39,12 +39,13 @@ import           System.Console.CmdArgs.Verbosity
 
 data NixLinter = NixLinter
   {
-    check     :: [OffenseCategory]
-  , noCheck   :: [OffenseCategory]
-  , json      :: Bool
-  , file_list :: Bool
-  , out       :: FilePath
-  , files     :: [FilePath]
+    check       :: [OffenseCategory]
+  , noCheck     :: [OffenseCategory]
+  , json        :: Bool
+  , json_stream :: Bool
+  , file_list   :: Bool
+  , out         :: FilePath
+  , files       :: [FilePath]
   } deriving (Show, Data, Typeable)
 
 nixLinter = NixLinter
@@ -52,6 +53,7 @@ nixLinter = NixLinter
     check = def &= help "checks to enable"
   , noCheck = def &= help "checks to disable"
   , json  = def &= help "Use JSON output"
+  , json_stream = def &= name "J" &= help "Use a newline-delimited stream of JSON objects instead of a JSON list (implies --json)"
   , file_list = def &= help "Read files to process (like xargs)"
   , out = def &= help "File to output to" &= typ "FILE"
   , files = def &= args &= typ "FILES"
@@ -113,8 +115,10 @@ runChecks (opts@NixLinter{..}) = do
     parsed <- parseNixFileLoc f
     case parsed of
       Success result -> pure $ combined result
-      Failure why    -> (log $ "Parse failed for " ++ f ++ "\n" ++ show why) >> pure []
+      Failure why    -> (log $ "Parse failed: \n" ++ show why) >> pure []
 
-  results & if json
-    then B.putStr . encodePretty
-    else traverse_ (putStrLn . prettyOffense)
+  results & if json_stream
+    then traverse_ $ \w -> B.putStr (encode w) >> putStr "\n"
+    else if json
+      then B.putStr . encode
+      else traverse_ (putStrLn . prettyOffense)

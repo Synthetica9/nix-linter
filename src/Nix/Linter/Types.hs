@@ -21,9 +21,10 @@ import           System.Console.CmdArgs   (Data)
 import           Nix.Expr.Types
 import           Nix.Expr.Types.Annotated
 import           Nix.Pretty               (prettyNix)
+import           Text.Megaparsec.Pos      (unPos)
 
 import           Nix.Linter.Traversals
-import           Text.Megaparsec.Pos      (unPos)
+import           Nix.Linter.Utils
 
 data OffenseF a = Offense
   { offending :: NExprLoc
@@ -36,12 +37,20 @@ data OffenseF a = Offense
 type Offense = OffenseF OffenseCategory
 type Check = NExprLoc -> [Offense]
 
-instance ToJSON Offense
+instance ToJSON Offense where
+  toJSON (Offense{..}) = object
+    [ "offending" .= showNix (stripAnnotation offending)
+    , "rewrite" .= toJSON (showNix <$> rewrite)
+    , "pos" .= toJSON pos
+    , "notes" .= toJSON notes
+    , "offense" .= toJSON offense
+    , "file" .= sourceName (spanBegin pos)
+    ] where showNix = pack . show . prettyNix
 
 
 instance ToJSON NExprLoc where
   toJSON e = object
-    [ "location" .= toJSON (getPos e)
+    [ "pos" .= toJSON (getPos e)
     , "content" .= (pack . show . prettyNix $ stripAnnotation e)
     ]
 
@@ -49,7 +58,10 @@ data Note
   = IncreasesGenerality
   | Note Text Text deriving (Show, Generic)
 
-instance ToJSON Note
+instance ToJSON Note where
+  toJSONList xs = object $ toJSON <$$> convert <$> xs where
+    convert (Note a b) = (a, Just b)
+    convert x          = (pack $ show x, Nothing)
 
 setLoc :: SourcePos -> Offense -> Offense
 setLoc l x = x { pos=singletonSpan l }
