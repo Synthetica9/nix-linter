@@ -85,6 +85,8 @@ executable nix-linter
     fixplate >= 0.1.7,
     cmdargs >= 0.10,
     aeson >= 1.4,
+    directory-tree >= 0.12,
+    parallel-io >= 0.3
 
   -- Directories containing source files.
   hs-source-dirs:      src

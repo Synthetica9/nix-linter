@@ -8,25 +8,29 @@
 
 module Main where
 
-import           Prelude                hiding (log)
+import           Prelude                              hiding (log)
 
-import           Control.Arrow          ((&&&))
-import           Data.Foldable          (toList, traverse_)
-import           Data.Function          ((&))
-import           Data.Maybe             (catMaybes)
-import           Data.Traversable       (for)
+import           Control.Arrow                        ((&&&))
+import           Control.Concurrent.ParallelIO.Global
+import           Data.Foldable                        (toList, traverse_)
+import           Data.Function                        ((&))
+import           Data.List                            (isSuffixOf)
+import           Data.Maybe                           (catMaybes)
+import           Data.Traversable                     (for)
+import           System.Directory.Tree                (readDirectoryWithL,
+                                                       zipPaths)
 import           System.Exit
-import           System.IO              (hPutStrLn, isEOF, stderr)
-import           System.IO.Unsafe       (unsafeInterleaveIO)
+import           System.IO
+import           System.IO.Unsafe                     (unsafeInterleaveIO)
 
-import qualified Data.ByteString.Lazy   as B
+import qualified Data.ByteString.Lazy                 as B
 
 
 import           Nix.Parser
 
-import qualified Data.Set               as S
+import qualified Data.Set                             as S
 
-import           Data.Aeson             (encode)
+import           Data.Aeson                           (encode)
 
 import           Nix.Linter
 import           Nix.Linter.Types
@@ -41,6 +45,7 @@ data NixLinter = NixLinter
   , json        :: Bool
   , json_stream :: Bool
   , file_list   :: Bool
+  , walk        :: Bool
   , out         :: FilePath
   , files       :: [FilePath]
   } deriving (Show, Data, Typeable)
@@ -52,8 +57,9 @@ nixLinter = NixLinter
   , noCheck = def &= help "checks to disable"
   , json  = def &= help "Use JSON output"
   , json_stream = def &= name "J" &= help "Use a newline-delimited stream of JSON objects instead of a JSON list (implies --json)"
+  , walk = def &= help "Walk given directories (like find)"
   , file_list = def &= help "Read files to process (like xargs)"
-  , out = def &= help "File to output to" &= typ "FILE"
+  , out = def &= help "File to output to" &= typFile
   , files = def &= args &= typ "FILES"
   } &= verbosity &= details (mkChecksHelp Nix.Linter.checks)
 
@@ -79,7 +85,7 @@ mkChecksHelp xs = "Available checks:" : (mkDetails <$> xs) where
   mkDis _     = ""
 
 main :: IO ()
-main =  cmdArgs nixLinter >>= runChecks
+main =  cmdArgs nixLinter >>= runChecks >> stopGlobalPool
 
 log :: String -> IO ()
 log = hPutStrLn stderr
@@ -99,7 +105,7 @@ runChecks (opts@NixLinter{..}) = do
     Right cs -> pure cs
 
   let noFiles = null files
-  files' <- if file_list
+  paths <- if file_list
     then
       if noFiles
         then stdinContents
@@ -109,15 +115,27 @@ runChecks (opts@NixLinter{..}) = do
         then (whenNormal $ log $ "No files to parse.") >> exitFailure
         else pure files
 
-  (results :: [Offense]) <- fmap concat $ for files' $ \f -> unsafeInterleaveIO $ do
+  files' :: [FilePath] <- if not walk
+    then pure paths
+    else
+      fmap (filter (isSuffixOf ".nix") . concat . fmap (toList . fmap fst . zipPaths))
+      $ for paths $ readDirectoryWithL $ const $ pure ()
+
+  (results :: [Offense]) <- fmap concat $ parallel $ files' <&> \f -> unsafeInterleaveIO $ do
     whenLoud $ log $ "Parsing file... " ++ f
-    parsed <- parseNixFileLoc f
+    parsed <- extraWorkerWhileBlocked $ parseNixFileLoc f
     case parsed of
       Success result -> pure $ combined result
       Failure why    -> (log $ "Parse failed: \n" ++ show why) >> pure []
 
-  results & if json_stream
-    then traverse_ $ \w -> B.putStr (encode w) >> putStr "\n"
+  let withOut = if null out
+      then ($ stdout)
+      else \action -> do
+        whenLoud $ log $ "Opening file " ++ out
+        withFile out WriteMode action
+
+  withOut $ \handle -> results & if json_stream
+    then traverse_ $ \w -> B.hPut handle (encode w) >> hPutStr handle "\n"
     else if json
-      then B.putStr . encode
-      else traverse_ (putStrLn . prettyOffense)
+      then B.hPut handle . encode
+      else traverse_ (hPutStrLn handle . prettyOffense)
