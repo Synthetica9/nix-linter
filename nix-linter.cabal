@@ -86,7 +86,11 @@ executable nix-linter
     cmdargs >= 0.10,
     aeson >= 1.4,
     directory-tree >= 0.12,
-    parallel-io >= 0.3
+    parallel-io >= 0.3,
+    containers >= 0.6,
+    text >= 0.11,
+    megaparsec,
+    bytestring
 
   -- Directories containing source files.
   hs-source-dirs:      src
