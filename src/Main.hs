@@ -9,10 +9,12 @@ import           Prelude                          hiding (log)
 
 import           Control.Arrow                    ((&&&))
 import           Control.Monad                    (forever)
-import           Data.Foldable                    (for_, toList)
+import           Data.Foldable                    (for_, toList, traverse_)
+import           Data.Function                    ((&))
 import           Data.Maybe                       (catMaybes)
 import           Data.Traversable                 (for)
 import           System.Environment
+import           System.Exit
 import           System.IO                        (hPutStrLn, isEOF, stderr)
 import           System.IO.Unsafe                 (unsafeInterleaveIO)
 
@@ -26,6 +28,7 @@ import           Data.Set                         (Set (..), (\\))
 import qualified Data.Set                         as S
 
 import           Data.Aeson                       (encode, toJSON)
+import           Data.Aeson.Encode.Pretty         (encodePretty)
 
 import           Nix.Linter
 import           Nix.Linter.Types
@@ -94,13 +97,16 @@ runChecks (opts@NixLinter{..}) = do
     Left err -> fail err
     Right cs -> pure cs
 
+  let noFiles = null files
   files' <- if file_list
     then
-      if null files
+      if noFiles
         then stdinContents
         else (concat :: [[String]] -> [FilePath]) <$> lines <$$> for files readFile
     else
-      pure files
+      if noFiles
+        then (whenNormal $ log $ "No files to parse.") >> exitFailure
+        else pure files
 
   (results :: [Offense]) <- fmap concat $ for files' $ \f -> unsafeInterleaveIO $ do
     whenLoud $ log $ "Parsing file... " ++ f
@@ -109,6 +115,6 @@ runChecks (opts@NixLinter{..}) = do
       Success result -> pure $ combined result
       Failure why    -> (log $ "Parse failed for " ++ f ++ "\n" ++ show why) >> pure []
 
-  if json
-    then B.putStr $ encode $ toJSON results
-    else for_ results (putStrLn . prettyOffense)
+  results & if json
+    then B.putStr . encodePretty
+    else traverse_ (putStrLn . prettyOffense)

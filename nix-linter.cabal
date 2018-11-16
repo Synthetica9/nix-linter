@@ -84,7 +84,8 @@ executable nix-linter
     data-fix,
     fixplate >= 0.1.7,
     cmdargs >= 0.10,
-    aeson >= 1.4
+    aeson >= 1.4,
+    aeson-pretty
 
   -- Directories containing source files.
   hs-source-dirs:      src
