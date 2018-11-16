@@ -1,10 +1,9 @@
 {-# LANGUAGE DeriveDataTypeable   #-}
 {-# LANGUAGE DeriveFunctor        #-}
 {-# LANGUAGE DeriveGeneric        #-}
-{-# LANGUAGE OverloadedStrings    #-}
-
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE KindSignatures       #-}
+{-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE RecordWildCards      #-}
 {-# LANGUAGE TypeSynonymInstances #-}
 
@@ -12,7 +11,7 @@ module Nix.Linter.Types where
 
 import           Control.Monad            (join)
 import           Data.Fix
-import           Data.Text                (Text (..), pack)
+import           Data.Text                (Text, pack)
 
 import           Data.Aeson
 import           GHC.Generics
@@ -46,13 +45,6 @@ instance ToJSON Offense where
     , "offense" .= toJSON offense
     , "file" .= sourceName (spanBegin pos)
     ] where showNix = pack . show . prettyNix
-
-
-instance ToJSON NExprLoc where
-  toJSON e = object
-    [ "pos" .= toJSON (getPos e)
-    , "content" .= (pack . show . prettyNix $ stripAnnotation e)
-    ]
 
 data Note
   = IncreasesGenerality

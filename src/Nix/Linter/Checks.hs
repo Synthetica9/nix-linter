@@ -8,7 +8,7 @@ import           Data.Function            ((&))
 import           Data.List                (sortOn)
 import           Data.List.NonEmpty       (NonEmpty (..))
 import           Data.Maybe               (maybeToList)
-import           Data.Text                (Text (..))
+import           Data.Text                (Text)
 
 import           Data.Fix
 import           Data.Pair

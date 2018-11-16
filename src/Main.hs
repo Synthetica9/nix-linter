@@ -3,39 +3,36 @@
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
+{-# OPTIONS_GHC -Wno-name-shadowing #-}
+
+
 module Main where
 
-import           Prelude                          hiding (log)
+import           Prelude                hiding (log)
 
-import           Control.Arrow                    ((&&&))
-import           Control.Monad                    (forever)
-import           Data.Foldable                    (for_, toList, traverse_)
-import           Data.Function                    ((&))
-import           Data.Maybe                       (catMaybes)
-import           Data.Traversable                 (for)
-import           System.Environment
+import           Control.Arrow          ((&&&))
+import           Data.Foldable          (toList, traverse_)
+import           Data.Function          ((&))
+import           Data.Maybe             (catMaybes)
+import           Data.Traversable       (for)
 import           System.Exit
-import           System.IO                        (hPutStrLn, isEOF, stderr)
-import           System.IO.Unsafe                 (unsafeInterleaveIO)
+import           System.IO              (hPutStrLn, isEOF, stderr)
+import           System.IO.Unsafe       (unsafeInterleaveIO)
 
-import qualified Data.ByteString.Lazy             as B
+import qualified Data.ByteString.Lazy   as B
 
 
 import           Nix.Parser
-import           Nix.Pretty
 
-import           Data.Set                         (Set (..), (\\))
-import qualified Data.Set                         as S
+import qualified Data.Set               as S
 
-import           Data.Aeson                       (encode, toJSON)
-import           Data.Aeson.Encode.Pretty         (encodePretty)
+import           Data.Aeson             (encode)
 
 import           Nix.Linter
 import           Nix.Linter.Types
 import           Nix.Linter.Utils
 
 import           System.Console.CmdArgs
-import           System.Console.CmdArgs.Verbosity
 
 data NixLinter = NixLinter
   {
@@ -48,6 +45,7 @@ data NixLinter = NixLinter
   , files       :: [FilePath]
   } deriving (Show, Data, Typeable)
 
+nixLinter :: NixLinter
 nixLinter = NixLinter
   {
     check = def &= help "checks to enable"
@@ -80,6 +78,7 @@ mkChecksHelp xs = "Available checks:" : (mkDetails <$> xs) where
   mkDis False = " (disabled by default)"
   mkDis _     = ""
 
+main :: IO ()
 main =  cmdArgs nixLinter >>= runChecks
 
 log :: String -> IO ()
