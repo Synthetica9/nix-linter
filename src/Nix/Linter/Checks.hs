@@ -171,6 +171,12 @@ checkUnfortunateArgName warn e = [ warn UnfortunateArgName
   , valid outer
   ]
 
+checkBetaReduction :: CheckBase
+checkBetaReduction warn e = [ warn BetaReduction
+  | NBinary_ _ NApp e' x <- [unFix e]
+  , NAbs_ _ _ _ <- [unFix e']
+  ]
+
 data AvailableCheck = AvailableCheck
   { category       :: OffenseCategory
   , baseCheck      :: CheckBase
@@ -195,6 +201,7 @@ checks = sortOn category
   , AvailableCheck DIYInherit checkDIYInherit True ""
   , AvailableCheck EmptyLet checkEmptyLet True ""
   , AvailableCheck UnfortunateArgName checkUnfortunateArgName True ""
+  , AvailableCheck BetaReduction checkBetaReduction False ""
   ]
 
 combineChecks :: [CheckBase] -> Check

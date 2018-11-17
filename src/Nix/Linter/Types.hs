@@ -124,6 +124,7 @@ data OffenseCategory
   | DIYInherit
   | EmptyLet
   | UnfortunateArgName
+  | BetaReduction
   deriving (Show, Generic, Data, Ord, Eq)
 
 instance ToJSON OffenseCategory
