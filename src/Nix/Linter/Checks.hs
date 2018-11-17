@@ -171,30 +171,34 @@ checkBetaReduction warn e = [ warn BetaReduction
   ]
 
 data AvailableCheck = AvailableCheck
-  { category       :: OffenseCategory
+  { defaultEnabled :: Bool
+  , category       :: OffenseCategory
   , baseCheck      :: CheckBase
-  , defaultEnabled :: Bool
   , description    :: String
   }
 
+enabledCheck, disabledCheck :: OffenseCategory -> CheckBase -> String -> AvailableCheck
+enabledCheck = AvailableCheck True
+disabledCheck = AvailableCheck False
+
 checks :: [AvailableCheck]
 checks = sortOn category
-  [ AvailableCheck UnusedLetBind checkUnusedLetBinding True ""
-  , AvailableCheck UnusedArg checkUnusedArg True ""
-  , AvailableCheck EmptyInherit checkEmptyInherit True ""
-  , AvailableCheck UnneededRec checkUnneededRec True ""
-  , AvailableCheck ListLiteralConcat checkListLiteralConcat True ""
-  , AvailableCheck SetLiteralUpdate checkSetLiteralUpdate True ""
-  , AvailableCheck UpdateEmptySet checkUpdateEmptySet True ""
-  , AvailableCheck UnneededAntiquote checkUnneededAntiquote True ""
-  , AvailableCheck NegateAtom checkNegateAtom True ""
-  , AvailableCheck EtaReduce checkEtaReduce True ""
-  , AvailableCheck FreeLetInFunc checkFreeLetInFunc True ""
-  , AvailableCheck LetInInheritRecset checkLetInInheritRecset True ""
-  , AvailableCheck DIYInherit checkDIYInherit True ""
-  , AvailableCheck EmptyLet checkEmptyLet True ""
-  , AvailableCheck UnfortunateArgName checkUnfortunateArgName True ""
-  , AvailableCheck BetaReduction checkBetaReduction False ""
+  [ enabledCheck UnusedLetBind checkUnusedLetBinding ""
+  , enabledCheck UnusedArg checkUnusedArg ""
+  , enabledCheck EmptyInherit checkEmptyInherit ""
+  , enabledCheck UnneededRec checkUnneededRec ""
+  , enabledCheck ListLiteralConcat checkListLiteralConcat ""
+  , enabledCheck SetLiteralUpdate checkSetLiteralUpdate ""
+  , enabledCheck UpdateEmptySet checkUpdateEmptySet ""
+  , enabledCheck UnneededAntiquote checkUnneededAntiquote ""
+  , enabledCheck NegateAtom checkNegateAtom ""
+  , enabledCheck EtaReduce checkEtaReduce ""
+  , enabledCheck FreeLetInFunc checkFreeLetInFunc ""
+  , enabledCheck LetInInheritRecset checkLetInInheritRecset ""
+  , enabledCheck DIYInherit checkDIYInherit ""
+  , enabledCheck EmptyLet checkEmptyLet ""
+  , enabledCheck UnfortunateArgName checkUnfortunateArgName ""
+  , disabledCheck BetaReduction checkBetaReduction ""
   ]
 
 combineChecks :: [CheckBase] -> Check
