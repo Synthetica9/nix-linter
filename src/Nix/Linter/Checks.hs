@@ -1,7 +1,6 @@
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
 
-
 module Nix.Linter.Checks where
 
 import           Data.Function            ((&))
@@ -49,7 +48,7 @@ checkUnusedArg warn e = [ warn UnusedArg
 
 checkEmptyInherit :: CheckBase
 checkEmptyInherit warn e = [ (warn EmptyInherit) {pos=singletonSpan loc}
-  | (bindings, _) <- [topLevelBinds e]
+  | (bindings, _, _) <- [topLevelBinds e]
   , Inherit _ [] loc <- bindings
   ]
 
@@ -80,17 +79,11 @@ checkListLiteralConcat = checkSymmetricOpBase ListLiteralConcat isListLiteral NC
 
 checkSetLiteralUpdate :: CheckBase
 checkSetLiteralUpdate = checkSymmetricOpBase SetLiteralUpdate isSetLiteral NUpdate where
-  isSetLiteral = \case
-    NSet_ _ _ -> True
-    NRecSet_ _ _ -> True
-    _ -> False
+  isSetLiteral e = let (_, _, isLit) = topLevelBinds (Fix e) in isLit
 
 checkUpdateEmptySet :: CheckBase
 checkUpdateEmptySet = checkOpBase UpdateEmptySet (Pair (const True) isEmptySetLiteral) NUpdate True where
-  isEmptySetLiteral = \case
-    NSet_ _ [] -> True
-    NRecSet_ _ [] -> True
-    _ -> False
+  isEmptySetLiteral e = let (xs, _, isLit) = topLevelBinds (Fix e) in null xs && isLit
 
 -- Works, but the pattern can be useful, so not in the full list of checks.
 checkUnneededAntiquote :: CheckBase
@@ -127,7 +120,7 @@ checkDIYInherit :: CheckBase
 checkDIYInherit warn e = [ warn DIYInherit
   & setLoc loc
   & note' varName x
-  | (binds, _) <- [topLevelBinds e]
+  | (binds, _, _) <- [topLevelBinds e]
   , NamedVar (StaticKey x :| []) e' loc <- binds
   , NSym_ _ x' <- [unFix e']
   , x == x'
@@ -158,7 +151,7 @@ checkUnfortunateArgName warn e = [ warn UnfortunateArgName
   & note' "now" name & note' "suggested" name'
   | NAbs_ _ (Param name) e' <- [unFix e]
   , (inner, outer) <- chooseTrees e'
-  , (bindings, context) <- [topLevelBinds inner]
+  , (bindings, context, _) <- [topLevelBinds inner]
   , NamedVar (StaticKey name' :| []) e'' _ <- bindings
   , name' /= name
   , NSym_ _ name'' <- [unFix e'']

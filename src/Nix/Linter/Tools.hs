@@ -37,15 +37,15 @@ getFreeVarName x = let
 getFreeVar :: NExprLoc -> NExprLoc
 getFreeVar = Fix . NSym_ generated . getFreeVarName
 
-topLevelBinds :: NExprLoc -> ([Binding NExprLoc], NExprLoc)
+topLevelBinds :: NExprLoc -> ([Binding NExprLoc], NExprLoc, Bool)
 topLevelBinds e = case unFix e of
-  -- `let x = 1; y = x; in y` is valid, so e is the context!
-  NLet_    _ xs _ -> (xs, e)
-  NRecSet_ _ xs   -> (xs, e)
+  NRecSet_ _ xs   -> (xs, e, True)
   -- Nonrecursive, so no context. We make up a context that can't possibly be valid.
-  NSet_    _ xs   -> (xs, getFreeVar e)
+  NSet_    _ xs   -> (xs, getFreeVar e, True)
+  -- `let x = 1; y = x; in y` is valid, so e is the context!
+  NLet_    _ xs _ -> (xs, e, False)
   -- Otherwise, our context is just empty!
-  _               -> ([], e)
+  _               -> ([], e, False)
 
 generatedPos :: SourcePos
 generatedPos = let z = mkPos 1 in SourcePos "<generated!>" z z
@@ -79,7 +79,7 @@ plainInherits x xs = or $ do
   pure $ x `elem` staticKeys ys
 
 plainInheritsAnywhere :: VarName -> NExprLoc -> Bool
-plainInheritsAnywhere x e = any (plainInherits x . fst . topLevelBinds) $ universe e
+plainInheritsAnywhere x e = any (plainInherits x . (\(a, _, _) -> a) . topLevelBinds) $ universe e
 
 nonIgnoredName :: VarName -> Bool
 nonIgnoredName x = not $ isPrefixOf "_" x
