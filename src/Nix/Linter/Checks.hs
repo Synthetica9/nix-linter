@@ -3,10 +3,12 @@
 
 module Nix.Linter.Checks where
 
+import           Control.Arrow            ((&&&))
 import           Data.Function            ((&))
 import           Data.List                (sortOn)
 import           Data.List.NonEmpty       (NonEmpty (..))
 import           Data.Maybe               (maybeToList)
+import           Data.Ord                 (Down (..))
 import           Data.Text                (Text)
 
 import           Data.Fix
@@ -182,7 +184,7 @@ enabledCheck = AvailableCheck True
 disabledCheck = AvailableCheck False
 
 checks :: [AvailableCheck]
-checks = sortOn category
+checks = sortOn (Down . defaultEnabled &&& show . category)
   [ enabledCheck UnusedLetBind checkUnusedLetBinding ""
   , enabledCheck UnusedArg checkUnusedArg ""
   , enabledCheck EmptyInherit checkEmptyInherit ""
