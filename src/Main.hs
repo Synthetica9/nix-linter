@@ -45,7 +45,7 @@ data NixLinter = NixLinter
   , json        :: Bool
   , json_stream :: Bool
   , file_list   :: Bool
-  , walk        :: Bool
+  , recursive   :: Bool
   , out         :: FilePath
   , files       :: [FilePath]
   } deriving (Show, Data, Typeable)
@@ -57,7 +57,7 @@ nixLinter = NixLinter
   , noCheck = def &= help "checks to disable"
   , json  = def &= help "Use JSON output"
   , json_stream = def &= name "J" &= help "Use a newline-delimited stream of JSON objects instead of a JSON list (implies --json)"
-  , walk = def &= help "Walk given directories (like find)"
+  , recursive = def &= help "Recursively walk given directories (like find)"
   , file_list = def &= help "Read files to process (like xargs)"
   , out = def &= help "File to output to" &= typFile
   , files = def &= args &= typ "FILES"
@@ -127,7 +127,7 @@ runChecks (opts@NixLinter{..}) = do
         then (whenNormal $ log $ "No files to parse.") >> exitFailure
         else pure files
 
-  files' :: [FilePath] <- if not walk
+  files' :: [FilePath] <- if not recursive
     then pure paths
     else
       fmap (filter (isSuffixOf ".nix") . concat . fmap (toList . fmap fst . zipPaths))
