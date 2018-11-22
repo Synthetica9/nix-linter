@@ -12,10 +12,10 @@ import           Prelude                              hiding (log)
 
 import           Control.Arrow                        ((&&&))
 import           Control.Concurrent.ParallelIO.Global
-import           Data.Foldable                        (toList, traverse_)
+import           Data.Foldable                        (for_, toList, traverse_)
 import           Data.Function                        ((&))
 import           Data.List                            (isSuffixOf)
-import           Data.Maybe                           (catMaybes)
+import           Data.Maybe                           (fromJust)
 import           Data.Traversable                     (for)
 import           System.Directory.Tree                (readDirectoryWithL,
                                                        zipPaths)
@@ -63,20 +63,26 @@ nixLinter = NixLinter
   , files = def &= args &= typ "FILES"
   } &= verbosity &= details (mkChecksHelp Nix.Linter.checks)
 
-getChecks :: [AvailableCheck] -> NixLinter -> Either String Check
+getChecks :: [AvailableCheck] -> NixLinter -> Either String [OffenseCategory]
 getChecks avail (NixLinter{..}) = let
     defaults = S.fromList $ category <$> filter defaultEnabled avail
     explitEnabled = S.fromList check
     explitDisabled = S.fromList noCheck
     conflicting = S.intersection explitEnabled explitDisabled
-    finalEnabled = defaults `S.union` explitDisabled `S.difference` explitDisabled
-    lookupTable = (category &&& baseCheck) <$> avail
-    getCheck = flip lookup lookupTable
-    checks = catMaybes (getCheck <$> toList finalEnabled)
+    finalEnabled = defaults `S.union` explitEnabled `S.difference` explitDisabled
+    checks = toList finalEnabled
   in if conflicting /= S.empty
     then Left $ "Checks both enabled and disabled: " ++ show conflicting
-    else Right $ combineChecks checks
+    else Right $ checks
 
+checkCategories :: [AvailableCheck] -> [OffenseCategory] -> Check
+checkCategories avail enabled = let
+    lookupTable = (category &&& baseCheck) <$> avail
+    getCheck = flip lookup lookupTable
+    -- fromJust, because we _want_ to crash when an unknown check shows up,
+    -- because that's certainly a bug!
+    checks = fromJust <$> (getCheck <$> toList enabled)
+  in combineChecks checks
 
 mkChecksHelp :: [AvailableCheck] -> [String]
 mkChecksHelp xs = "Available checks:" : (mkDetails <$> xs) where
@@ -99,10 +105,16 @@ stdinContents = do
 
 runChecks :: NixLinter -> IO ()
 runChecks (opts@NixLinter{..}) = do
-  let enabledChecks = getChecks checks opts
-  combined <- case enabledChecks of
+  enabled <- case getChecks checks opts of
     Left err -> fail err
     Right cs -> pure cs
+
+  whenLoud $ do
+    log "Enabled checks:"
+    for_ enabled $ \check -> do
+      log $ "- " ++ show check
+
+  let combined = checkCategories checks enabled
 
   let noFiles = null files
   paths <- if file_list
