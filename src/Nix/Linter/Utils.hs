@@ -13,3 +13,7 @@ choose (x : xs) = (x, xs) : ((x :) <$$> choose xs)
 
 (...) :: (c -> d) -> (a -> b -> c) -> a -> b -> d
 (...) = (.) . (.)
+
+sorted :: Ord a => [a] -> Bool
+sorted [] = True
+sorted xs = and $ (<=) <$> xs <*> tail xs

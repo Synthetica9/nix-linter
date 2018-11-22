@@ -21,7 +21,7 @@ import           Nix.Expr.Types.Annotated
 
 import           Nix.Linter.Tools
 import           Nix.Linter.Types
-import           Nix.Linter.Utils         (choose, (<$$>), (<&>))
+import           Nix.Linter.Utils         (choose, sorted, (<$$>), (<&>))
 
 varName :: Text
 varName = "varName"
@@ -168,8 +168,20 @@ checkUnfortunateArgName warn e = [ warn UnfortunateArgName
 
 checkBetaReduction :: CheckBase
 checkBetaReduction warn e = [ warn BetaReduction
-  | NBinary_ _ NApp e' x <- [unFix e]
+  | NBinary_ _ NApp e' _ <- [unFix e]
   , NAbs_ _ _ _ <- [unFix e']
+  ]
+
+checkAlphabeticalBindings :: CheckBase
+checkAlphabeticalBindings warn e = [ warn AlphabeticalBindings
+  | (bindings, _, _) <- [topLevelBinds e]
+  , not $ sorted $ const () <$$> bindings
+  ]
+
+checkAlphabeticalArgs :: CheckBase
+checkAlphabeticalArgs warn e = [ warn AlphabeticalArgs
+  | NAbs_ _ (ParamSet xs _ _) _ <- [unFix e]
+  , not $ sorted $ const () <$$> xs
   ]
 
 data AvailableCheck = AvailableCheck
@@ -201,6 +213,8 @@ checks = sortOn (Down . defaultEnabled &&& show . category)
   , enabledCheck EmptyLet checkEmptyLet ""
   , enabledCheck UnfortunateArgName checkUnfortunateArgName ""
   , disabledCheck BetaReduction checkBetaReduction ""
+  , disabledCheck AlphabeticalBindings checkAlphabeticalBindings ""
+  , disabledCheck AlphabeticalArgs checkAlphabeticalArgs ""
   ]
 
 combineChecks :: [CheckBase] -> Check

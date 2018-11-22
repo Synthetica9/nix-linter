@@ -125,6 +125,8 @@ data OffenseCategory
   | EmptyLet
   | UnfortunateArgName
   | BetaReduction
+  | AlphabeticalBindings
+  | AlphabeticalArgs
   deriving (Show, Generic, Data, Ord, Eq)
 
 instance ToJSON OffenseCategory
