@@ -169,8 +169,7 @@ pipeline (NixLinter {..}) combined = let
     & walk
     & S.filter (isSuffixOf ".nix")
     & aheadly . parseFiles
-    & aheadly . S.map (combined >>> S.fromList)
-    & aheadly . join -- Do an improvised fold
+    & aheadly . (S.map (combined >>> S.fromList) >>> join)
     & S.mapM (liftIO . printer)
 
 
