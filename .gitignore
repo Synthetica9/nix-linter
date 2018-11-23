@@ -26,3 +26,4 @@ result-*
 
 all_warnings
 src/Main
+.vscode
