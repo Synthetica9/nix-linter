@@ -11,6 +11,8 @@ import           Data.Maybe               (maybeToList)
 import           Data.Ord                 (Down (..))
 import           Data.Text                (Text)
 
+import qualified Data.Set                 as Set
+
 import           Data.Fix
 import           Data.Pair
 
@@ -215,6 +217,11 @@ checks = sortOn (Down . defaultEnabled &&& show . category)
   , disabledCheck BetaReduction checkBetaReduction ""
   , disabledCheck AlphabeticalBindings checkAlphabeticalBindings ""
   , disabledCheck AlphabeticalArgs checkAlphabeticalArgs ""
+  ]
+
+multiChecks :: [(String, Set.Set OffenseCategory)]
+multiChecks = Set.fromList <$$>
+  [ ("all", category <$> checks)
   ]
 
 combineChecks :: [CheckBase] -> Check

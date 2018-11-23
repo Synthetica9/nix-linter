@@ -1,5 +1,7 @@
 module Nix.Linter.Utils where
 
+import           Data.Either (partitionEithers)
+
 (<$$>) :: (Functor f, Functor g) => (a -> b) -> f (g a) -> f (g b)
 (<$$>) = fmap . fmap
 
@@ -17,3 +19,8 @@ choose (x : xs) = (x, xs) : ((x :) <$$> choose xs)
 sorted :: Ord a => [a] -> Bool
 sorted [] = True
 sorted xs = and $ (<=) <$> xs <*> tail xs
+
+sequenceEither :: [Either a b] -> Either [a] [b]
+sequenceEither x = case partitionEithers x of
+  ([], rights) -> Right rights
+  (lefts, _)   -> Left lefts

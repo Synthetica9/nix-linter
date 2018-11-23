@@ -2,6 +2,8 @@
 {-# LANGUAGE DeriveDataTypeable  #-}
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TupleSections       #-}
+
 
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 
@@ -12,6 +14,7 @@ import           Prelude                              hiding (log)
 
 import           Control.Arrow                        ((&&&))
 import           Control.Concurrent.ParallelIO.Global
+import           Data.Char                            (isUpper, toLower)
 import           Data.Foldable                        (for_, toList, traverse_)
 import           Data.Function                        ((&))
 import           Data.List                            (isSuffixOf)
@@ -28,7 +31,7 @@ import qualified Data.ByteString.Lazy                 as B
 
 import           Nix.Parser
 
-import qualified Data.Set                             as S
+import qualified Data.Set                             as Set
 
 import           Data.Aeson                           (encode)
 
@@ -39,9 +42,7 @@ import           Nix.Linter.Utils
 import           System.Console.CmdArgs
 
 data NixLinter = NixLinter
-  {
-    check       :: [OffenseCategory]
-  , noCheck     :: [OffenseCategory]
+  { check       :: [String]
   , json        :: Bool
   , json_stream :: Bool
   , file_list   :: Bool
@@ -52,9 +53,7 @@ data NixLinter = NixLinter
 
 nixLinter :: NixLinter
 nixLinter = NixLinter
-  {
-    check = def &= help "checks to enable"
-  , noCheck = def &= help "checks to disable"
+  { check = def &= name "W" &= help "checks to enable"
   , json  = def &= help "Use JSON output"
   , json_stream = def &= name "J" &= help "Use a newline-delimited stream of JSON objects instead of a JSON list (implies --json)"
   , recursive = def &= help "Recursively walk given directories (like find)"
@@ -63,39 +62,52 @@ nixLinter = NixLinter
   , files = def &= args &= typ "FILES"
   } &= verbosity &= details (mkChecksHelp Nix.Linter.checks)
 
-getChecks :: [AvailableCheck] -> NixLinter -> Either String [OffenseCategory]
-getChecks avail (NixLinter{..}) = let
-    defaults = S.fromList $ category <$> filter defaultEnabled avail
-    explitEnabled = S.fromList check
-    explitDisabled = S.fromList noCheck
-    conflicting = S.intersection explitEnabled explitDisabled
-    finalEnabled = defaults `S.union` explitEnabled `S.difference` explitDisabled
-    checks = toList finalEnabled
-  in if conflicting /= S.empty
-    then Left $ "Checks both enabled and disabled: " ++ show conflicting
-    else Right $ checks
+parseCheckArg :: String -> Either String (Set.Set OffenseCategory -> Set.Set OffenseCategory)
+parseCheckArg arg = case filter ((fmap toLower arg ==) . fst) lookupTable of
+    []       -> Left $ "No parse: " ++ arg
+    [(_, x)] -> Right $ x
+    _        -> Left $ "Ambiguous parse: " ++ arg
+  where
+  sets =  ((show &&& Set.singleton) <$> category <$> checks) ++ multiChecks
+  names = conversions =<< sets
+  conversions (name, x) = (,x) <$> (fmap toLower <$> ([id, filter isUpper] <*> [name]))
+  lookupTable = do
+    (name, s) <- names
+    (prefix, f) <- [("", Set.union), ("no-", Set.difference)]
+    pure (prefix ++ name, flip f s)
 
-checkCategories :: [AvailableCheck] -> [OffenseCategory] -> Check
-checkCategories avail enabled = let
-    lookupTable = (category &&& baseCheck) <$> avail
+getChecks :: NixLinter -> Either [String] [OffenseCategory]
+getChecks (NixLinter {..}) = let
+    defaults = Set.fromList $ category <$> filter defaultEnabled checks
+    parsedArgs = sequenceEither $ parseCheckArg <$> check
+    categories = (\fs -> foldl (flip ($)) defaults fs) <$> parsedArgs
+  in Set.toList <$> categories
+
+checkCategories :: [OffenseCategory] -> Check
+checkCategories enabled = let
+    lookupTable = (category &&& baseCheck) <$> checks
     getCheck = flip lookup lookupTable
     -- fromJust, because we _want_ to crash when an unknown check shows up,
     -- because that's certainly a bug!
-    checks = fromJust <$> (getCheck <$> toList enabled)
-  in combineChecks checks
+    checks' = fromJust <$> (getCheck <$> enabled)
+  in combineChecks checks'
 
 getCombined :: NixLinter -> IO Check
 getCombined opts = do
-  enabled <- case getChecks checks opts of
-    Left err -> fail err
+  enabled <- case getChecks opts of
     Right cs -> pure cs
+    Left err -> do
+      for_ err print
+      exitFailure
 
   whenLoud $ do
     log "Enabled checks:"
-    for_ enabled $ \check -> do
-      log $ "- " ++ show check
+    if null enabled
+      then log "  (None)"
+      else for_ enabled $ \check -> do
+        log $ "- " ++ show check
 
-  pure $ checkCategories checks enabled
+  pure $ checkCategories enabled
 
 mkChecksHelp :: [AvailableCheck] -> [String]
 mkChecksHelp xs = "Available checks:" : (mkDetails <$> xs) where
