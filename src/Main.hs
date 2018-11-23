@@ -123,12 +123,6 @@ main =  cmdArgs nixLinter >>= runChecks
 log :: String -> IO ()
 log = hPutStrLn stderr
 
-
--- Q: why not use `S.repeatM getLine`?
--- A: Because that doesn't handle EOF nicely :(
-stdinContents :: (IsStream t, MonadIO (t m), MonadAsync m, Monad (t m))  => t m String
-stdinContents = S.takeWhileM (const $ liftIO isEOF) (liftIO getLine)
-
 -- Example from https://hackage.haskell.org/package/streamly
 listDirRecursive :: (IsStream t, MonadIO m, MonadIO (t m), Monoid (t m FilePath)) => FilePath -> t m FilePath
 listDirRecursive path = resolveDir' path >>= readDir
