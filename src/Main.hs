@@ -16,7 +16,7 @@ module Main where
 import           Prelude                  hiding (log)
 
 import           Control.Arrow            ((&&&), (>>>))
-import           Control.Monad            (join)
+import           Control.Monad            (join, (>=>))
 import           Control.Monad.Trans      (MonadIO, liftIO)
 import           Data.Char                (isUpper, toLower)
 import           Data.Foldable            (fold, foldMap, for_, toList,
@@ -26,7 +26,7 @@ import           Data.List                (isSuffixOf)
 import           Data.Maybe               (fromJust)
 import           Data.Traversable         (for)
 import           Path.Internal            (toFilePath)
-import           Path.IO                  (listDir, resolveDir')
+import           Path.IO                  (getCurrentDir, listDir, resolveDir')
 import           System.Exit
 import           System.IO
 import           System.IO.Unsafe         (unsafeInterleaveIO)
@@ -55,7 +55,6 @@ data NixLinter = NixLinter
   { check       :: [String]
   , json        :: Bool
   , json_stream :: Bool
-  , file_list   :: Bool
   , recursive   :: Bool
   , out         :: FilePath
   , files       :: [FilePath]
@@ -67,7 +66,6 @@ nixLinter = NixLinter
   , json  = def &= help "Use JSON output"
   , json_stream = def &= name "J" &= help "Use a newline-delimited stream of JSON objects instead of a JSON list (implies --json)"
   , recursive = def &= help "Recursively walk given directories (like find)"
-  , file_list = def &= help "Read files to process (like xargs)"
   , out = def &= help "File to output to" &= typFile
   , files = def &= args &= typ "FILES"
   } &= verbosity &= details (mkChecksHelp Nix.Linter.checks)
@@ -157,9 +155,13 @@ parseFiles = S.mapMaybeM $ (\path ->
 
 pipeline :: NixLinter -> Check -> _
 pipeline (NixLinter {..}) combined = let
-    walk = case (recursive, file_list) of
-      (True, False)  -> (>>= listDirRecursive)
+    exitLog x = S.yieldM . liftIO . const (log x >> exitFailure)
+    walk = case (recursive, null files) of
+      (False, True) -> exitLog "No files to parse, quitting..."
+      (True, False) -> (>>= listDirRecursive) -- Walk a tree
+      (True, True) -> exitLog "This will parse the current dir recursivly in the future"
       (False, False) -> id
+
     printer = if
       | json_stream -> \w -> B.putStr (encode w) >> putStr "\n"
       | json -> B.putStr . encode
