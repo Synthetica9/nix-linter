@@ -61,7 +61,7 @@ nixLinter = NixLinter
   , json  = def &= help "Use JSON output"
   , json_stream = def &= name "J" &= help "Use a newline-delimited stream of JSON objects instead of a JSON list (implies --json)"
   , recursive = def &= help "Recursively walk given directories (like find)"
-  , out = def &= help "File to output to" &= typFile
+  , out = def &= help "File to output to" &= opt "-" &= typFile
   , files = def &= args &= typ "FILES"
   } &= verbosity &= details (mkChecksHelp Nix.Linter.checks)
 
@@ -130,8 +130,6 @@ listDirRecursive path = resolveDir' path >>= readDir
   where
     readDir dir = do
       (dirs, files) <- listDir dir
-      -- liftIO $ mapM_ putStrLn
-      --        $ map show dirs ++ map show files
       S.fromList (toFilePath <$> files) `serial` foldMap readDir dirs
 
 parseFiles = S.mapMaybeM $ (\path ->
@@ -142,7 +140,7 @@ parseFiles = S.mapMaybeM $ (\path ->
       liftIO $ whenNormal $ log $ "Failure when parsing:\n" ++ show why
       pure Nothing)
 
-pipeline (NixLinter {..}) combined = let
+pipeline (NixLinter {..}) combined outHandle = let
     exitLog x = S.yieldM . liftIO . const (log x >> exitFailure)
     walker = if recursive
       then (>>= listDirRecursive)
@@ -165,9 +163,12 @@ pipeline (NixLinter {..}) combined = let
     & aheadly . (S.map (combined >>> S.fromList) >>> join)
     & S.mapM (liftIO . printer)
 
-
 runChecks :: NixLinter -> IO ()
 runChecks (opts@NixLinter{..}) = do
   combined <- getCombined opts
 
-  runStream $ pipeline opts combined
+  let withOutHandle = if null out
+      then ($ stdout)
+      else withFile out WriteMode
+
+  withOutHandle (runStream . pipeline opts combined)
