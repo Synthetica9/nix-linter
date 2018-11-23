@@ -84,6 +84,19 @@ checkCategories avail enabled = let
     checks = fromJust <$> (getCheck <$> toList enabled)
   in combineChecks checks
 
+getCombined :: NixLinter -> IO Check
+getCombined opts = do
+  enabled <- case getChecks checks opts of
+    Left err -> fail err
+    Right cs -> pure cs
+
+  whenLoud $ do
+    log "Enabled checks:"
+    for_ enabled $ \check -> do
+      log $ "- " ++ show check
+
+  pure $ checkCategories checks enabled
+
 mkChecksHelp :: [AvailableCheck] -> [String]
 mkChecksHelp xs = "Available checks:" : (mkDetails <$> xs) where
   mkDetails (AvailableCheck{..}) = "    " ++ show category ++ mkDis defaultEnabled
@@ -105,16 +118,7 @@ stdinContents = do
 
 runChecks :: NixLinter -> IO ()
 runChecks (opts@NixLinter{..}) = do
-  enabled <- case getChecks checks opts of
-    Left err -> fail err
-    Right cs -> pure cs
-
-  whenLoud $ do
-    log "Enabled checks:"
-    for_ enabled $ \check -> do
-      log $ "- " ++ show check
-
-  let combined = checkCategories checks enabled
+  combined <- getCombined opts
 
   let noFiles = null files
   paths <- if file_list
