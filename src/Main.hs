@@ -1,39 +1,49 @@
-{-# LANGUAGE ApplicativeDo       #-}
-{-# LANGUAGE DeriveDataTypeable  #-}
-{-# LANGUAGE RecordWildCards     #-}
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections       #-}
-
+{-# LANGUAGE ApplicativeDo         #-}
+{-# LANGUAGE DeriveDataTypeable    #-}
+{-# LANGUAGE FlexibleContexts      #-}
+{-# LANGUAGE LambdaCase            #-}
+{-# LANGUAGE MultiWayIf            #-}
+{-# LANGUAGE PartialTypeSignatures #-}
+{-# LANGUAGE RecordWildCards       #-}
+{-# LANGUAGE ScopedTypeVariables   #-}
+{-# LANGUAGE TupleSections         #-}
 
 {-# OPTIONS_GHC -Wno-name-shadowing #-}
 
 
 module Main where
 
-import           Prelude                              hiding (log)
+import           Prelude                  hiding (log)
 
-import           Control.Arrow                        ((&&&))
-import           Control.Concurrent.ParallelIO.Global
-import           Data.Char                            (isUpper, toLower)
-import           Data.Foldable                        (for_, toList, traverse_)
-import           Data.Function                        ((&))
-import           Data.List                            (isSuffixOf)
-import           Data.Maybe                           (fromJust)
-import           Data.Traversable                     (for)
-import           System.Directory.Tree                (readDirectoryWithL,
-                                                       zipPaths)
+import           Control.Arrow            ((&&&))
+import           Control.Monad            (join)
+import           Control.Monad.Trans      (MonadIO, liftIO)
+import           Data.Char                (isUpper, toLower)
+import           Data.Foldable            (fold, foldMap, for_, toList,
+                                           traverse_)
+import           Data.Function            ((&))
+import           Data.List                (isSuffixOf)
+import           Data.Maybe               (fromJust)
+import           Data.Traversable         (for)
+import           Path.Internal            (toFilePath)
+import           Path.IO                  (listDir, resolveDir')
 import           System.Exit
 import           System.IO
-import           System.IO.Unsafe                     (unsafeInterleaveIO)
+import           System.IO.Unsafe         (unsafeInterleaveIO)
 
-import qualified Data.ByteString.Lazy                 as B
+import qualified Data.ByteString.Lazy     as B
 
 
+import           Nix.Expr.Types.Annotated
 import           Nix.Parser
 
-import qualified Data.Set                             as Set
+import qualified Data.Set                 as Set
 
-import           Data.Aeson                           (encode)
+import           Streamly
+import           Streamly.Prelude         ((|:))
+import qualified Streamly.Prelude         as S
+
+import           Data.Aeson               (encode)
 
 import           Nix.Linter
 import           Nix.Linter.Types
@@ -116,54 +126,56 @@ mkChecksHelp xs = "Available checks:" : (mkDetails <$> xs) where
   mkDis _     = ""
 
 main :: IO ()
-main =  cmdArgs nixLinter >>= runChecks >> stopGlobalPool
+main =  cmdArgs nixLinter >>= runChecks
 
 log :: String -> IO ()
 log = hPutStrLn stderr
 
-stdinContents :: IO [String]
-stdinContents = do
-  eof <- isEOF
-  if eof
-    then pure []
-    else (:) <$> getLine <*> (unsafeInterleaveIO $ stdinContents)
+
+-- Q: why not use `S.repeatM getLine`?
+-- A: Because that doesn't handle EOF nicely :(
+stdinContents :: (IsStream t, MonadIO (t m), MonadAsync m, Monad (t m))  => t m String
+stdinContents = S.takeWhileM (const $ liftIO isEOF) (liftIO getLine)
+
+-- Example from https://hackage.haskell.org/package/streamly
+listDirRecursive :: (IsStream t, MonadIO m, MonadIO (t m), Monoid (t m FilePath)) => FilePath -> t m FilePath
+listDirRecursive path = resolveDir' path >>= readDir
+  where
+    readDir dir = do
+      (dirs, files) <- listDir dir
+      -- liftIO $ mapM_ putStrLn
+      --        $ map show dirs ++ map show files
+      S.fromList (toFilePath <$> files) `serial` foldMap readDir dirs
+
+parseFiles = S.mapMaybeM $ (\path ->
+  parseNixFileLoc path >>= \case
+    Success parse -> do
+      pure $ Just parse
+    Failure why -> do
+      liftIO $ whenNormal $ log $ "Failure when parsing:\n" ++ show why
+      pure Nothing)
+
+pipeline :: NixLinter -> Check -> _
+pipeline (NixLinter {..}) combined = let
+    walk = case (recursive, file_list) of
+      (True, False)  -> (>>= listDirRecursive)
+      (False, False) -> id
+    printer = if
+      | json_stream -> \w -> B.putStr (encode w) >> putStr "\n"
+      | json -> B.putStr . encode
+      | otherwise -> putStrLn . prettyOffense
+  in
+    S.fromList files
+    & walk
+    & S.filter (isSuffixOf ".nix")
+    & aheadly . parseFiles
+    & aheadly . S.map combined
+    & S.map (S.fromList) & join -- Do an improvised fold
+    & S.mapM (liftIO . printer)
+
 
 runChecks :: NixLinter -> IO ()
 runChecks (opts@NixLinter{..}) = do
   combined <- getCombined opts
 
-  let noFiles = null files
-  paths <- if file_list
-    then
-      if noFiles
-        then stdinContents
-        else (concat :: [[String]] -> [FilePath]) <$> lines <$$> for files readFile
-    else
-      if noFiles
-        then (whenNormal $ log $ "No files to parse.") >> exitFailure
-        else pure files
-
-  files' :: [FilePath] <- if not recursive
-    then pure paths
-    else
-      fmap (filter (isSuffixOf ".nix") . concat . fmap (toList . fmap fst . zipPaths))
-      $ for paths $ readDirectoryWithL $ const $ pure ()
-
-  (results :: [Offense]) <- fmap concat $ parallel $ files' <&> \f -> unsafeInterleaveIO $ do
-    whenLoud $ log $ "Parsing file... " ++ f
-    parsed <- extraWorkerWhileBlocked $ parseNixFileLoc f
-    case parsed of
-      Success result -> pure $ combined result
-      Failure why    -> (log $ "Parse failed: \n" ++ show why) >> pure []
-
-  let withOut = if null out
-      then ($ stdout)
-      else \action -> do
-        whenLoud $ log $ "Opening file " ++ out
-        withFile out WriteMode action
-
-  withOut $ \handle -> results & if json_stream
-    then traverse_ $ \w -> B.hPut handle (encode w) >> hPutStr handle "\n"
-    else if json
-      then B.hPut handle . encode
-      else traverse_ (hPutStrLn handle . prettyOffense)
+  runStream $ pipeline opts combined
