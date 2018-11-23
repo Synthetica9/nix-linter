@@ -35,6 +35,7 @@ import           Nix.Parser
 import qualified Data.Set               as Set
 
 import           Streamly
+import           Streamly.Prelude       ((.:))
 import qualified Streamly.Prelude       as S
 
 import           Data.Aeson             (encode)
@@ -143,11 +144,14 @@ parseFiles = S.mapMaybeM $ (\path ->
 
 pipeline (NixLinter {..}) combined = let
     exitLog x = S.yieldM . liftIO . const (log x >> exitFailure)
+    walker = if recursive
+      then (>>= listDirRecursive)
+      else id
+
     walk = case (recursive, null files) of
       (False, True) -> exitLog "No files to parse, quitting..."
-      (True, False) -> (>>= listDirRecursive) -- Walk a tree
-      (True, True) -> exitLog "This will parse the current dir recursivly in the future"
-      (False, False) -> id
+      (True, True)  -> ("." .:) >>> walker
+      (_, _)        -> walker
 
     printer = if
       | json_stream -> \w -> B.putStr (encode w) >> putStr "\n"
