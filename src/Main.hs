@@ -8,42 +8,36 @@
 {-# LANGUAGE ScopedTypeVariables   #-}
 {-# LANGUAGE TupleSections         #-}
 
-{-# OPTIONS_GHC -Wno-name-shadowing #-}
-
+{-# OPTIONS_GHC -Wno-missing-signatures -Wno-name-shadowing #-}
 
 module Main where
 
-import           Prelude                  hiding (log)
+import           Prelude                hiding (log)
 
-import           Control.Arrow            ((&&&), (>>>))
-import           Control.Monad            (join, (>=>))
-import           Control.Monad.Trans      (MonadIO, liftIO)
-import           Data.Char                (isUpper, toLower)
-import           Data.Foldable            (fold, foldMap, for_, toList,
-                                           traverse_)
-import           Data.Function            ((&))
-import           Data.List                (isSuffixOf)
-import           Data.Maybe               (fromJust)
-import           Data.Traversable         (for)
-import           Path.Internal            (toFilePath)
-import           Path.IO                  (getCurrentDir, listDir, resolveDir')
+import           Control.Arrow          ((&&&), (>>>))
+import           Control.Monad          (join)
+import           Control.Monad.Trans    (MonadIO, liftIO)
+import           Data.Char              (isUpper, toLower)
+import           Data.Foldable          (foldMap, for_)
+import           Data.Function          ((&))
+import           Data.List              (isSuffixOf)
+import           Data.Maybe             (fromJust)
+import           Path.Internal          (toFilePath)
+import           Path.IO                (getCurrentDir, listDir, resolveDir')
 import           System.Exit
 import           System.IO
-import           System.IO.Unsafe         (unsafeInterleaveIO)
 
-import qualified Data.ByteString.Lazy     as B
+import qualified Data.ByteString.Lazy   as B
 
 
-import           Nix.Expr.Types.Annotated
 import           Nix.Parser
 
-import qualified Data.Set                 as Set
+import qualified Data.Set               as Set
 
 import           Streamly
-import           Streamly.Prelude         ((|:))
-import qualified Streamly.Prelude         as S
+import qualified Streamly.Prelude       as S
 
-import           Data.Aeson               (encode)
+import           Data.Aeson             (encode)
 
 import           Nix.Linter
 import           Nix.Linter.Types
@@ -153,7 +147,6 @@ parseFiles = S.mapMaybeM $ (\path ->
       liftIO $ whenNormal $ log $ "Failure when parsing:\n" ++ show why
       pure Nothing)
 
-pipeline :: NixLinter -> Check -> _
 pipeline (NixLinter {..}) combined = let
     exitLog x = S.yieldM . liftIO . const (log x >> exitFailure)
     walk = case (recursive, null files) of
