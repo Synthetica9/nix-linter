@@ -140,7 +140,7 @@ parseFiles = S.mapMaybeM $ (\path ->
       liftIO $ whenNormal $ log $ "Failure when parsing:\n" ++ show why
       pure Nothing)
 
-pipeline (NixLinter {..}) combined outHandle = let
+pipeline (NixLinter {..}) combined = let
     exitLog x = S.yieldM . liftIO . const (log x >> exitFailure)
     walker = if recursive
       then (>>= listDirRecursive)
@@ -151,17 +151,12 @@ pipeline (NixLinter {..}) combined outHandle = let
       (True, True)  -> ("." .:) >>> walker
       (_, _)        -> walker
 
-    printer = if
-      | json_stream -> \w -> B.putStr (encode w) >> putStr "\n"
-      | json -> B.putStr . encode
-      | otherwise -> putStrLn . prettyOffense
   in
     S.fromList files
     & walk
     & S.filter (isSuffixOf ".nix")
     & aheadly . parseFiles
     & aheadly . (S.map (combined >>> S.fromList) >>> join)
-    & S.mapM (liftIO . printer)
 
 runChecks :: NixLinter -> IO ()
 runChecks (opts@NixLinter{..}) = do
@@ -171,4 +166,14 @@ runChecks (opts@NixLinter{..}) = do
       then ($ stdout)
       else withFile out WriteMode
 
-  withOutHandle (runStream . pipeline opts combined)
+      printer = \handle -> if
+        | json_stream -> \w -> B.hPut handle (encode w) >> hPutStr handle "\n"
+        | json -> B.hPutStr handle . encode
+        | otherwise -> hPutStrLn handle . prettyOffense
+
+      results = pipeline opts combined
+
+  noIssues <- S.null results
+  withOutHandle $ \handle -> S.mapM_ (liftIO . printer handle) results
+
+  if noIssues then exitSuccess else exitFailure
