@@ -1,4 +1,5 @@
 language: nix
 script:
+  - set -o pipefail
   - nix-env -iA cachix -f https://github.com/NixOS/nixpkgs/tarball/889c72032f8595fcd7542c6032c208f6b8033db6
   - nix-build -A nix-linter | cachix push nix-linter
