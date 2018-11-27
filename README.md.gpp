@@ -1,0 +1,9 @@
+# Usage
+
+```sh
+<#include usage.sh>
+```
+
+```
+<#exec ./usage.sh>
+```
