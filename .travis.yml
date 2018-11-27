@@ -3,3 +3,10 @@ script:
   - set -o pipefail
   - nix-env -iA cachix -f https://github.com/NixOS/nixpkgs/tarball/889c72032f8595fcd7542c6032c208f6b8033db6
   - nix-build -A nix-linter | cachix push nix-linter
+before_deploy: "./update_readme.sh"
+deploy:
+  skip_cleanup: true
+  file:
+    README.md
+  api_key:
+    secure: IhhPdLSMuKEQDPmHheB1zvoFKTUT+lqKrkwbv6Pih7hbPKjtX2Y1VmBAGjfQRlXSz5876DAqYFNHe/avIvtkEMvnI0p24e5IWb1O5H/lNS3TpcmIF23umMDkJVbWXsP7qdBei1YGN/7Tr/IUZNZ+RD8VUR9SL1ozL6QNIvqFR6zqMFDlYCNkRMlQ3usO8NkBPaI+4WjhB3t8tlGJN9/r1CIizfLIE0g32v23RGCOV3gRNzS/M5Cb/ZfpC/6DyjjMkBUVrDAlxPOK/PO5Zn7xRycRUX5AlhO413FMfPX59lm/zWp+JJUJ5M/CZL4AqaUysl2IppBZPJzNlkRiYM0/V/ET328rPYvlzyOtr2rN+tjSv4x3dDw4t6Tt+QRlSyfkUn9kpcwijEf4pV8SrKAKSEBi7cHkyf4xq1f+dBEDBlj1I0rZ8nax3DNp2mL3DKrzX0PLZgVJzWKohbFXjCcWYl+o3XAnjjBvanxmjwB28i8rmlokc1lDSe84bunRi1vjmT5snEddgmPpPieRHr71seF7ixTLT1qW6Qa+JraT+cpQZcjoMr8BSyv+XeVK/Pk+wyuOIKnxBANMB7jevkGJVUazCEtxajOHbXhVGyG0qzfp9chNYxqWvYlbOXiHKgg1DRp++yxvBfp4Y0KwJFikTCidWwAIbnsfmKQdpjxblo4=
