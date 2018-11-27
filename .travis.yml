@@ -5,6 +5,7 @@ script:
   - nix-build -A nix-linter | cachix push nix-linter
 before_deploy: "./update_readme.sh"
 deploy:
+  provider: releases
   skip_cleanup: true
   file:
     README.md
