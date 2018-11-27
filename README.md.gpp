@@ -1,5 +1,13 @@
 # Usage
 
+First, setup cachix:
+
+```sh
+cachix use nix-linter
+```
+
+Then, you can run the application with:
+
 ```sh
 <#include usage.sh>
 ```
