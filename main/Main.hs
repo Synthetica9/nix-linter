@@ -61,7 +61,7 @@ nixLinter = NixLinter
   , recursive = def &= help "Recursively walk given directories (like find)"
   , out = def &= help "File to output to" &= opt "-" &= typFile
   , files = def &= args &= typ "FILES"
-  } &= verbosity &= details (mkChecksHelp Nix.Linter.checks)
+  } &= verbosity &= details (mkChecksHelp Nix.Linter.checks) &= program "nix-linter"
 
 getChecks :: NixLinter -> Either [String] [OffenseCategory]
 getChecks (NixLinter {..}) = let
