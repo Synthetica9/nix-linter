@@ -108,8 +108,7 @@ prettyOffense :: Offense -> String
 prettyOffense (Offense {..}) = show offense ++ " at " ++ prettySourceSpan pos
 
 data OffenseCategory
-  = RepetitionWithoutWith
-  | UnusedLetBind
+  = UnusedLetBind
   | UnusedArg
   | EmptyInherit
   | UnneededRec
@@ -127,6 +126,6 @@ data OffenseCategory
   | BetaReduction
   | AlphabeticalBindings
   | AlphabeticalArgs
-  deriving (Show, Generic, Data, Ord, Eq)
+  deriving (Show, Generic, Data, Ord, Eq, Bounded, Enum)
 
 instance ToJSON OffenseCategory
