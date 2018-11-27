@@ -48,6 +48,9 @@ extra-source-files:  CHANGELOG.md
 -- Constraint on the version of Cabal needed to build this package.
 cabal-version:       >=1.10
 
+data-files:
+  examples/*.nix
+
 -- library
 --   -- Modules exported by the library.
 --   -- exposed-modules:
@@ -123,12 +126,19 @@ test-suite nix-linter-unit-tests
   main-is: Main.hs
   type: exitcode-stdio-1.0
 
+  other-modules:
+    Paths_nix_linter
+
   build-depends:
     nix-linter,
 
     tasty,
     tasty-th,
     tasty-hunit,
+    directory,
+    filepath,
 
     base,
-    containers
+    containers,
+    mtl,
+    hnix

@@ -24,3 +24,12 @@ sequenceEither :: [Either a b] -> Either [a] [b]
 sequenceEither x = case partitionEithers x of
   ([], rights) -> Right rights
   (lefts, _)   -> Left lefts
+
+removeSuffix :: Eq a => [a] -> [a] -> [a]
+removeSuffix xs xs'
+  | xs == xs' = []
+removeSuffix xs (y:ys) = y:removeSuffix xs ys
+removeSuffix _ [] = []
+
+eitherIO :: Either String a -> IO a
+eitherIO = either fail pure

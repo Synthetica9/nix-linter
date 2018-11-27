@@ -17,11 +17,9 @@ import           Prelude                hiding (log)
 import           Control.Arrow          ((&&&), (>>>))
 import           Control.Monad          (join)
 import           Control.Monad.Trans    (MonadIO, liftIO)
-import           Data.Char              (isUpper, toLower)
 import           Data.Foldable          (foldMap, for_)
 import           Data.Function          ((&))
 import           Data.List              (isSuffixOf)
-import           Data.Maybe             (fromJust)
 import           Path.Internal          (toFilePath)
 import           Path.IO                (getCurrentDir, listDir, resolveDir')
 import           System.Exit
@@ -65,35 +63,12 @@ nixLinter = NixLinter
   , files = def &= args &= typ "FILES"
   } &= verbosity &= details (mkChecksHelp Nix.Linter.checks)
 
-parseCheckArg :: String -> Either String (Set.Set OffenseCategory -> Set.Set OffenseCategory)
-parseCheckArg arg = case filter ((fmap toLower arg ==) . fst) lookupTable of
-    []       -> Left $ "No parse: " ++ arg
-    [(_, x)] -> Right $ x
-    _        -> Left $ "Ambiguous parse: " ++ arg
-  where
-  sets =  ((show &&& Set.singleton) <$> category <$> checks) ++ multiChecks
-  names = conversions =<< sets
-  conversions (name, x) = (,x) <$> (fmap toLower <$> ([id, filter isUpper] <*> [name]))
-  lookupTable = do
-    (name, s) <- names
-    (prefix, f) <- [("", Set.union), ("no-", Set.difference)]
-    pure (prefix ++ name, flip f s)
-
 getChecks :: NixLinter -> Either [String] [OffenseCategory]
 getChecks (NixLinter {..}) = let
     defaults = Set.fromList $ category <$> filter defaultEnabled checks
     parsedArgs = sequenceEither $ parseCheckArg <$> check
     categories = (\fs -> foldl (flip ($)) defaults fs) <$> parsedArgs
   in Set.toList <$> categories
-
-checkCategories :: [OffenseCategory] -> Check
-checkCategories enabled = let
-    lookupTable = (category &&& baseCheck) <$> checks
-    getCheck = flip lookup lookupTable
-    -- fromJust, because we _want_ to crash when an unknown check shows up,
-    -- because that's certainly a bug!
-    checks' = fromJust <$> (getCheck <$> enabled)
-  in combineChecks checks'
 
 getCombined :: NixLinter -> IO Check
 getCombined opts = do

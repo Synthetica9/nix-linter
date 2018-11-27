@@ -1,15 +1,19 @@
 {-# LANGUAGE LambdaCase        #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections     #-}
 
 module Nix.Linter.Checks where
 
 import           Control.Arrow            ((&&&))
+import           Data.Char                (isUpper, toLower)
 import           Data.Function            ((&))
 import           Data.List                (sortOn)
 import           Data.List.NonEmpty       (NonEmpty (..))
+import           Data.Maybe               (fromJust)
 import           Data.Maybe               (maybeToList)
 import           Data.Ord                 (Down (..))
 import           Data.Text                (Text)
+
 
 import qualified Data.Set                 as Set
 
@@ -226,3 +230,26 @@ multiChecks = Set.fromList <$$>
 
 combineChecks :: [CheckBase] -> Check
 combineChecks c e = (check <$> c) >>= ($ e)
+
+parseCheckArg :: String -> Either String (Set.Set OffenseCategory -> Set.Set OffenseCategory)
+parseCheckArg arg = case filter ((fmap toLower arg ==) . fst) lookupTable of
+    []       -> Left $ "No parse: " ++ arg
+    [(_, x)] -> Right $ x
+    _        -> Left $ "Ambiguous parse: " ++ arg
+  where
+  sets =  ((show &&& Set.singleton) <$> category <$> checks) ++ multiChecks
+  names = conversions =<< sets
+  conversions (name, x) = (,x) <$> (fmap toLower <$> ([id, filter isUpper] <*> [name]))
+  lookupTable = do
+    (name, s) <- names
+    (prefix, f) <- [("", Set.union), ("no-", Set.difference)]
+    pure (prefix ++ name, flip f s)
+
+checkCategories :: [OffenseCategory] -> Check
+checkCategories enabled = let
+    lookupTable = (category &&& baseCheck) <$> checks
+    getCheck = flip lookup lookupTable
+    -- fromJust, because we _want_ to crash when an unknown check shows up,
+    -- because that's certainly a bug!
+    checks' = fromJust <$> (getCheck <$> enabled)
+  in combineChecks checks'
