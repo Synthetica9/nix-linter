@@ -2,6 +2,7 @@
 {-# LANGUAGE OverloadedStrings   #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Nix.Linter (combineChecks, checks, AvailableCheck(..), multiChecks) where
+module Nix.Linter ( combineChecks, checks, AvailableCheck(..), multiChecks
+                  , parseCheckArg, checkCategories) where
 
 import           Nix.Linter.Checks

@@ -48,6 +48,9 @@ extra-source-files:  CHANGELOG.md
 -- Constraint on the version of Cabal needed to build this package.
 cabal-version:       >=1.10
 
+data-files:
+  examples/*.nix
+
 -- library
 --   -- Modules exported by the library.
 --   -- exposed-modules:
@@ -67,12 +70,8 @@ cabal-version:       >=1.10
 --   -- Base language which the package is written in.
 --   default-language:    Haskell2010
 
-executable nix-linter
-  -- .hs or .lhs file containing the Main module.
-  main-is:             Main.hs
-
-  -- Modules included in this executable, other than Main.
-  other-modules:
+library
+  exposed-modules:
     Data.Pair,
     Nix.Linter,
     Nix.Linter.Checks,
@@ -82,10 +81,6 @@ executable nix-linter
     Nix.Linter.Types,
     Nix.Linter.Utils
 
-  -- LANGUAGE extensions used by modules in this package.
-  -- other-extensions:
-
-  -- Other library packages from which modules are imported.
   build-depends:
     base >=4.9,
     hnix >=0.5,
@@ -97,15 +92,53 @@ executable nix-linter
     parallel-io >= 0.3,
     containers >= 0.5,
     text >= 0.11,
-    streamly >=0.5,
-    path-io >=1.4,
-    path >= 0.6,
-    megaparsec,
-    mtl >=1.1,
-    bytestring
+    megaparsec
 
-  -- Directories containing source files.
   hs-source-dirs:      src
 
-  -- Base language which the package is written in.
   default-language:    Haskell2010
+
+executable nix-linter
+  main-is: Main.hs
+  hs-source-dirs: main
+  default-language: Haskell2010
+  build-depends:
+    -- The main package:
+    nix-linter,
+
+    -- Packages only used here:
+    streamly >=0.5,
+    mtl >=1.1,
+    path-io >=1.4,
+    path >= 0.6,
+
+    -- Packages also used in the library:
+    base,
+    aeson,
+    cmdargs,
+    containers,
+    hnix,
+    bytestring
+
+test-suite nix-linter-unit-tests
+  hs-source-dirs: tests
+  default-language: Haskell2010
+  main-is: Main.hs
+  type: exitcode-stdio-1.0
+
+  other-modules:
+    Paths_nix_linter
+
+  build-depends:
+    nix-linter,
+
+    tasty,
+    tasty-th,
+    tasty-hunit,
+    directory,
+    filepath,
+
+    base,
+    containers,
+    mtl,
+    hnix
