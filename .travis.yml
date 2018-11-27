@@ -6,6 +6,7 @@ script:
 before_deploy: "./update_readme.sh"
 deploy:
   provider: releases
+  overwrite: true
   skip_cleanup: true
   file:
     README.md
