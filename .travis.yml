@@ -1,4 +1,4 @@
 language: nix
 script:
-  - nix-env nix-env -iA cachix
+  - nix-env -iA cachix
   - nix-build -A nix-linter | cachix push nix-linter
