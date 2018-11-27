@@ -1,2 +1,2 @@
 language: nix
-script: nix-build -A nix-linter
+script: nix-build -A nix-linter | cachix push nix-linter
