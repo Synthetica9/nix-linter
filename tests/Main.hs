@@ -1,9 +1,12 @@
 {-# LANGUAGE TemplateHaskell #-}
 
 import           Control.Monad.Trans      (liftIO)
+import           Data.Char                (toLower)
 import           Data.Foldable            (for_)
 import           Data.Function            (on)
+import           Data.Set                 ((\\))
 import qualified Data.Set                 as Set
+import           Data.Traversable         (for)
 import           System.Directory         (listDirectory)
 import           System.FilePath          ((</>))
 
@@ -20,6 +23,13 @@ import           Test.Tasty.HUnit
 import           Test.Tasty.TH
 
 
+stripExtension :: FilePath -> String
+stripExtension = takeWhile (/= '.')
+
+parseCategory name = do
+  f <- eitherIO $ parseCheckArg name
+  pure (f Set.empty)
+
 case_all_offense_categories_covered :: Assertion
 case_all_offense_categories_covered = do
   let available = category <$> checks
@@ -32,13 +42,24 @@ case_examples_match = let
     exampleDir <- liftIO $ getDataFileName "examples"
     examples <- liftIO $ listDirectory exampleDir
     for_ examples $ \example -> do
-      let strippedName = takeWhile (/= '.') example
-      f <- liftIO $ eitherIO $ parseCheckArg strippedName
-      let category = f Set.empty
-          check = checkCategories $ Set.toList category
+      let strippedName = stripExtension example
+      category <- parseCategory strippedName
+      let check = checkCategories $ Set.toList category
 
       Success parsed <- parseNixFileLoc $ exampleDir </> example
       let offenses = Set.fromList $ offense <$> check parsed
       assertEqual strippedName offenses category
+
+case_all_categories_have_example :: Assertion
+case_all_categories_have_example =
+  do
+    let all = Set.fromList ([minBound..maxBound] :: [OffenseCategory])
+    exampleDir <- liftIO $ getDataFileName "examples"
+    examples <- liftIO $ listDirectory exampleDir
+    let stripped = stripExtension <$> examples
+    parsed <- for stripped $ liftIO . parseCategory
+    let union = Set.unions parsed
+        diff = all \\ union
+    assertEqual ("Missing: " ++ show diff) union all
 
 main = $defaultMainGenerator
