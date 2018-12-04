@@ -39,6 +39,7 @@ Available checks:
     LetInInheritRecset
     ListLiteralConcat
     NegateAtom
+    SequentialLet
     SetLiteralUpdate
     UnfortunateArgName
     UnneededAntiquote

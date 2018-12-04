@@ -190,6 +190,12 @@ checkAlphabeticalArgs warn e = [ warn AlphabeticalArgs
   , not $ sorted $ const () <$$> xs
   ]
 
+checkSequentialLet :: CheckBase
+checkSequentialLet warn e = [ warn SequentialLet
+  | NLet_ _ _ e' <- [unFix e]
+  , NLet_ _ _ _ <- [unFix e']
+  ]
+
 data AvailableCheck = AvailableCheck
   { defaultEnabled :: Bool
   , category       :: OffenseCategory
@@ -221,6 +227,7 @@ checks = sortOn (Down . defaultEnabled &&& show . category)
   , disabledCheck BetaReduction checkBetaReduction ""
   , disabledCheck AlphabeticalBindings checkAlphabeticalBindings ""
   , disabledCheck AlphabeticalArgs checkAlphabeticalArgs ""
+  , enabledCheck SequentialLet checkSequentialLet ""
   ]
 
 multiChecks :: [(String, Set.Set OffenseCategory)]
