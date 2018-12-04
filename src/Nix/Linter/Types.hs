@@ -126,6 +126,7 @@ data OffenseCategory
   | BetaReduction
   | AlphabeticalBindings
   | AlphabeticalArgs
+  | SequentialLet
   deriving (Show, Generic, Data, Ord, Eq, Bounded, Enum)
 
 instance ToJSON OffenseCategory
