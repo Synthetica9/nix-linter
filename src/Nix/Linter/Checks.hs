@@ -7,7 +7,7 @@ module Nix.Linter.Checks where
 import           Control.Arrow            ((&&&))
 import           Data.Char                (isUpper, toLower)
 import           Data.Function            ((&))
-import           Data.List                (sortOn)
+import           Data.List                (isInfixOf, sortOn)
 import           Data.List.NonEmpty       (NonEmpty (..))
 import           Data.Maybe               (fromJust)
 import           Data.Maybe               (maybeToList)
@@ -232,9 +232,11 @@ checks = sortOn (Down . defaultEnabled &&& show . category)
 
 multiChecks :: [(String, Set.Set OffenseCategory)]
 multiChecks = Set.fromList <$$>
-  [ ("all", category <$> checks)
-  , ("default", category <$> filter defaultEnabled checks)
-  ]
+  [ ("All", category <$> checks)
+  , ("Default", category <$> filter defaultEnabled checks)
+  , mkMulti "Alphabetical"
+  ] where
+    mkMulti s = (toLower <$> s, filter (isInfixOf s . show) $ category <$> checks)
 
 combineChecks :: [CheckBase] -> Check
 combineChecks c e = (check <$> c) >>= ($ e)
