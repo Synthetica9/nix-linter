@@ -233,6 +233,7 @@ checks = sortOn (Down . defaultEnabled &&& show . category)
 multiChecks :: [(String, Set.Set OffenseCategory)]
 multiChecks = Set.fromList <$$>
   [ ("all", category <$> checks)
+  , ("default", category <$> filter defaultEnabled checks)
   ]
 
 combineChecks :: [CheckBase] -> Check
