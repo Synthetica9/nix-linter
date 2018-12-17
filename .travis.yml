@@ -6,10 +6,10 @@ script:
 before_deploy: "./update_readme.sh"
 deploy:
   provider: pages
-  target-branch: test-gpp
+  target-branch: master
   keep-history: true
-
-  skip-cleanup: true
+  on:
+    branch: master
   file:
     README.md
   github_token:
