@@ -8,6 +8,7 @@ deploy:
   provider: pages
   target-branch: master
   keep-history: true
+  skip-cleanup: true
   on:
     branch: master
   file:
