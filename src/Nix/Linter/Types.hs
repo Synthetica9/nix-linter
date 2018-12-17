@@ -127,6 +127,7 @@ data OffenseCategory
   | AlphabeticalBindings
   | AlphabeticalArgs
   | SequentialLet
+  | EmptyVariadicParamSet
   deriving (Show, Generic, Data, Ord, Eq, Bounded, Enum)
 
 instance ToJSON OffenseCategory

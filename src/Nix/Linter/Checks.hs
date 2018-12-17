@@ -9,8 +9,7 @@ import           Data.Char                (isUpper, toLower)
 import           Data.Function            ((&))
 import           Data.List                (isInfixOf, sortOn)
 import           Data.List.NonEmpty       (NonEmpty (..))
-import           Data.Maybe               (fromJust)
-import           Data.Maybe               (maybeToList)
+import           Data.Maybe               (fromJust, fromMaybe, maybeToList)
 import           Data.Ord                 (Down (..))
 import           Data.Text                (Text)
 
@@ -196,6 +195,13 @@ checkSequentialLet warn e = [ warn SequentialLet
   , NLet_ _ _ _ <- [unFix e']
   ]
 
+checkEmptyVariadicParamSet :: CheckBase
+checkEmptyVariadicParamSet warn e = [ warn EmptyVariadicParamSet
+  & suggest (Fix $ NAbs (Param $ fromMaybe "_" x) $ stripAnnotation e')
+  & note IncreasesGenerality
+  | NAbs_ _ (ParamSet [] True x) e' <- [unFix e]
+  ]
+
 data AvailableCheck = AvailableCheck
   { defaultEnabled :: Bool
   , category       :: OffenseCategory
@@ -228,6 +234,7 @@ checks = sortOn (Down . defaultEnabled &&& show . category)
   , disabledCheck AlphabeticalBindings checkAlphabeticalBindings ""
   , disabledCheck AlphabeticalArgs checkAlphabeticalArgs ""
   , enabledCheck SequentialLet checkSequentialLet ""
+  , disabledCheck EmptyVariadicParamSet checkEmptyVariadicParamSet ""
   ]
 
 multiChecks :: [(String, Set.Set OffenseCategory)]
