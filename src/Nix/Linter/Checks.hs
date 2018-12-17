@@ -197,7 +197,7 @@ checkSequentialLet warn e = [ warn SequentialLet
 
 checkEmptyVariadicParamSet :: CheckBase
 checkEmptyVariadicParamSet warn e = [ warn EmptyVariadicParamSet
-  & suggest (NAbs (Param (fromMaybe "_" x) (stripAnnotation e')))
+  & suggest (NAbs (Param $ fromMaybe "_" x) (stripAnnotation e'))
   & note IncreasesGenerality
   | NAbs_ _ (ParamSet [] True x) e' <- [unFix e]
   ]
