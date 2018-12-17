@@ -50,5 +50,6 @@ Available checks:
     AlphabeticalArgs (disabled by default)
     AlphabeticalBindings (disabled by default)
     BetaReduction (disabled by default)
+    EmptyVariadicParamSet (disabled by default)
 
 ```
