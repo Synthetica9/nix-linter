@@ -1,4 +1,12 @@
-# Usage
+# `nix-linter`
+
+[![Build Status](https://travis-ci.org/Synthetica9/nix-linter.svg?branch=master)](https://travis-ci.org/Synthetica9/nix-linter)
+
+`nix-linter` is a program to check for several common mistakes or stylistic
+errors in Nix expressions, such as unused arguments, empty let blocks,
+etcetera.
+
+## Usage
 
 First, setup cachix:
 
