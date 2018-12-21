@@ -90,22 +90,25 @@ getSpan = annotation . getCompose . unFix
 check :: CheckBase -> Check
 check base tree = (\e -> base (Offense e Nothing (getSpan e) []) e) =<< universe tree
 
-prettySourcePos :: SourcePos -> String
-prettySourcePos (SourcePos file l c) = file ++ ":" ++ show (unPos l) ++ ":" ++ show (unPos c)
+pShow :: Show a => a -> Text
+pShow = pack . show
 
-prettySourceSpan :: SrcSpan -> String
+prettySourcePos :: SourcePos -> Text
+prettySourcePos (SourcePos file l c) = pack file <> ":" <> pShow (unPos l) <> ":" <> pShow (unPos c)
+
+prettySourceSpan :: SrcSpan -> Text
 prettySourceSpan (SrcSpan pos1@(SourcePos f1 l1 c1) pos2@(SourcePos f2 l2 c2))
-  | f1 /= f2 = base ++ prettySourcePos pos2 -- It could happen I guess?
-  | l1 /= l2 = base ++ show (unPos l2) ++ ":" ++ show (unPos c2)
-  | c1 /= c2 = base ++ show (unPos c2)
+  | f1 /= f2 = base <> prettySourcePos pos2 -- It could happen I guess?
+  | l1 /= l2 = base <> pShow (unPos l2) <> ":" <> pShow (unPos c2)
+  | c1 /= c2 = base <> pShow (unPos c2)
   | otherwise = prettySourcePos pos1
-    where base = prettySourcePos pos1 ++ "-"
+    where base = prettySourcePos pos1 <> "-"
 
 singletonSpan :: SourcePos -> SrcSpan
 singletonSpan = join SrcSpan
 
-prettyOffense :: Offense -> String
-prettyOffense (Offense {..}) = show offense ++ " at " ++ prettySourceSpan pos
+prettyOffense :: Offense -> Text
+prettyOffense (Offense {..}) = pShow offense <> " at " <> prettySourceSpan pos
 
 data OffenseCategory
   = UnusedLetBind
