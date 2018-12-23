@@ -76,8 +76,9 @@ library
     path-io >= 0.12,
     parallel-io >= 0.3,
     containers >= 0.5,
-    text >= 0.11,
-    megaparsec
+    text >= 0.1.2.3,
+    megaparsec,
+    pandoc
 
   hs-source-dirs:      src
 

@@ -1,5 +1,9 @@
 # Revision history for nix-linter
 
+## ??? -- 2019-??-??
+* Move more internal strings from String to Text
+* Add descriptions of offenses
+
 ## 0.2.0.0 -- 2018-12-19
 
 * Add initial functionality.

@@ -3,6 +3,7 @@
 {-# LANGUAGE DeriveGeneric        #-}
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE KindSignatures       #-}
+{-# LANGUAGE MultiWayIf           #-}
 {-# LANGUAGE OverloadedStrings    #-}
 {-# LANGUAGE RecordWildCards      #-}
 {-# LANGUAGE TypeSynonymInstances #-}
@@ -37,13 +38,14 @@ type Offense = OffenseF OffenseCategory
 type Check = NExprLoc -> [Offense]
 
 instance ToJSON Offense where
-  toJSON (Offense{..}) = object
+  toJSON o@(Offense{..}) = object
     [ "offending" .= showNix (stripAnnotation offending)
     , "rewrite" .= toJSON (showNix <$> rewrite)
     , "pos" .= toJSON pos
     , "notes" .= toJSON notes
     , "offense" .= toJSON offense
     , "file" .= sourceName (spanBegin pos)
+    , "description" .= toJSON (describe o)
     ] where showNix = pack . show . prettyNix
 
 data Note
@@ -107,8 +109,45 @@ prettySourceSpan (SrcSpan pos1@(SourcePos f1 l1 c1) pos2@(SourcePos f2 l2 c2))
 singletonSpan :: SourcePos -> SrcSpan
 singletonSpan = join SrcSpan
 
+getNote :: Offense -> Text -> Maybe Text
+getNote (Offense {..}) k = lookup k lt
+  where lt = [ (k, v) | Note k v <- notes ]
+
+-- TODO: escape
+quoteVar :: Text -> Text
+quoteVar v = "`" <> v <> "`"
+
+describe :: Offense -> Text
+describe full@(Offense {..}) = let
+    note = getNote full
+    o = offense
+    -- TODO: extract
+    varName = note "varName"
+    now = note "now"
+    suggested = note "suggested"
+
+    whyNot = fmap (pack . show . prettyNix) rewrite
+  in case o of
+    UnusedLetBind | Just x <- varName -> "Unused `let` bind " <> quoteVar x
+    UnusedArg | Just x <- varName -> "Unused argument " <> quoteVar x
+    EmptyInherit -> "Empty `inherit`"
+    UnneededRec -> "Unneeded `rec` on set"
+    EtaReduce | Just x <- varName -> "Possible η-reduction of argument " <> quoteVar x
+    ListLiteralConcat -> "Concatenating two list literals"
+    SetLiteralUpdate -> "Concatenating two set literals with `//`"
+    UpdateEmptySet -> "Updating an empty set with `//`"
+    NegateAtom | Just r <- whyNot -> "Negating an atom, why not " <> quoteVar r
+    EmptyVariadicParamSet -> "Using `{ ... }` as pattern match"
+    DIYInherit | Just x <- varName -> "Use " <> quoteVar ("inherit " <> x)
+    SequentialLet -> "Sequential `let` blocks (`let ... in let ... in ...`)"
+    EmptyLet -> "Empty `let` block"
+    UnfortunateArgName | Just x <- now, Just x' <- suggested -> "Unfortunate argument name "
+      <> quoteVar x <> " prevents the use of `inherit`, why not use " <> quoteVar x'
+    FreeLetInFunc -> "Move `let` block outside function definition"
+    _ -> pShow o
+
 prettyOffense :: Offense -> Text
-prettyOffense (Offense {..}) = pShow offense <> " at " <> prettySourceSpan pos
+prettyOffense o@(Offense {..}) = describe o <> " at " <> prettySourceSpan pos
 
 data OffenseCategory
   = UnusedLetBind

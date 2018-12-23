@@ -222,7 +222,7 @@ checks = sortOn (Down . defaultEnabled &&& show . category)
   , enabledCheck ListLiteralConcat checkListLiteralConcat ""
   , enabledCheck SetLiteralUpdate checkSetLiteralUpdate ""
   , enabledCheck UpdateEmptySet checkUpdateEmptySet ""
-  , enabledCheck UnneededAntiquote checkUnneededAntiquote ""
+  , disabledCheck UnneededAntiquote checkUnneededAntiquote ""
   , enabledCheck NegateAtom checkNegateAtom ""
   , enabledCheck EtaReduce checkEtaReduce ""
   , enabledCheck FreeLetInFunc checkFreeLetInFunc ""
@@ -242,6 +242,7 @@ multiChecks = Set.fromList <$$>
   [ ("All", category <$> checks)
   , ("Default", category <$> filter defaultEnabled checks)
   , mkMulti "Alphabetical"
+  , mkMulti "Unused"
   ] where
     mkMulti s = (toLower <$> s, filter (isInfixOf s . show) $ category <$> checks)
 
