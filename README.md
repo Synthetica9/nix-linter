@@ -50,7 +50,6 @@ Available checks:
     SequentialLet
     SetLiteralUpdate
     UnfortunateArgName
-    UnneededAntiquote
     UnneededRec
     UnusedArg
     UnusedLetBind
@@ -59,5 +58,6 @@ Available checks:
     AlphabeticalBindings (disabled by default)
     BetaReduction (disabled by default)
     EmptyVariadicParamSet (disabled by default)
+    UnneededAntiquote (disabled by default)
 
 ```
