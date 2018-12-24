@@ -14,7 +14,14 @@ First, setup cachix:
 cachix use nix-linter
 ```
 
-Then, you can run the application with:
+Then clone the repo and `cd` into it:
+
+```sh
+git clone https://github.com/Synthetica9/nix-linter
+cd nix-linter
+```
+
+Finally, you can run the application with:
 
 ```sh
 $(nix-build -A nix-linter)/bin/nix-linter --help
