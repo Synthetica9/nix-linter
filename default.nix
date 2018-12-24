@@ -3,7 +3,7 @@ with pkgs;
 
 (haskellPackages.override ({
     overrides = self: super: {
-      streamly = super.streamly_0_5_2;
+      streamly = super.streamly_0_5_2 or super.streamly_0_5_0;
       path-io = super.path-io_1_4_0;
     };
 })).extend (haskell.lib.packageSourceOverrides {
