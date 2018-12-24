@@ -1,8 +1,18 @@
 language: nix
 script:
   - set -o pipefail
+  - nix-channel --list
+  - nix-channel --add "https://nixos.org/channels/$NIXPKGS_CHANNEL" nixpkgs
+  - nix-channel --update
+  - nix-channel --list
   - nix-env -iA cachix -f https://github.com/NixOS/nixpkgs/tarball/889c72032f8595fcd7542c6032c208f6b8033db6
   - nix-build -A nix-linter | cachix push nix-linter
+matrix:
+  include:
+    - name: "NixOS 18.09"
+      env: NIXPKGS_CHANNEL=nixos-18.09
+    - name: "Nixpkgs Unstable"
+      env: NIXPKGS_CHANNEL=nixpkgs-unstable
 before_deploy: "./update_readme.sh"
 deploy:
   provider: pages
