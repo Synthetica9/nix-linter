@@ -5,7 +5,7 @@ script:
   - nix-channel --add "https://nixos.org/channels/$NIXPKGS_CHANNEL" nixpkgs
   - nix-channel --update
   - nix-channel --list
-  - nix-env -iA cachix -f https://github.com/NixOS/nixpkgs/tarball/889c72032f8595fcd7542c6032c208f6b8033db6
+  - nix-env -iA cachix -f https://cachix.org/api/v1/install
   - nix-build -A nix-linter | (if [ "$TRAVIS_BRANCH" = "master" ]; then cachix push nix-linter; fi)
 matrix:
   include:
