@@ -23,6 +23,7 @@ deploy:
   skip-cleanup: true
   on:
     branch: master
+    condition: '"$DISABLED" != "true"'
   file:
     README.md
   github_token:
