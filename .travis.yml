@@ -6,13 +6,15 @@ script:
   - nix-channel --update
   - nix-channel --list
   - nix-env -iA cachix -f https://cachix.org/api/v1/install
-  - nix-build -A nix-linter | (if [ "$TRAVIS_BRANCH" = "master" ]; then cachix push nix-linter; fi)
+  - nix-build -A nix-linter | (if [ "$TRAVIS_BRANCH" = "master" ]; then cachix push nix-linter; fi) || [ "$DISABLED" = "true" ]
 matrix:
   include:
     - name: "NixOS 18.09"
       env: NIXPKGS_CHANNEL=nixos-18.09
     - name: "Nixpkgs Unstable"
-      env: NIXPKGS_CHANNEL=nixpkgs-unstable
+      env:
+        - NIXPKGS_CHANNEL=nixpkgs-unstable
+        - DISABLED=true
 before_deploy: "./update_readme.sh"
 deploy:
   provider: pages
