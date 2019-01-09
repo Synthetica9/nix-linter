@@ -59,7 +59,6 @@ case_all_categories_have_example =
     diff <- concat <$$> for all $ \cat -> do
       let path = exampleDir <> "/" <> show cat <> ".nix"
       exists <- doesFileExist path
-      print (exists, path)
       pure $ if exists then [] else [cat]
     assertBool ("Missing: " ++ show diff) (null diff)
 
