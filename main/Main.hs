@@ -20,7 +20,7 @@ import           Control.Monad.Trans    (MonadIO, liftIO)
 import           Data.Foldable          (foldMap, for_)
 import           Data.Function          ((&))
 import           Data.List              (isSuffixOf)
-import           Data.Text              (Text)
+import           Data.Text              (Text, pack)
 
 import           Data.Text.IO
 import           Path.Internal          (toFilePath)
@@ -45,6 +45,8 @@ import           Opts
 import           Nix.Linter
 import           Nix.Linter.Types
 import           Nix.Linter.Utils
+
+import           Paths_nix_linter
 
 import           System.Console.CmdArgs
 
@@ -115,7 +117,10 @@ pipeline (NixLinter {..}) combined = let
 
 extraHelp :: OffenseCategory -> IO ()
 extraHelp cat = do
-  print cat
+  log $ "-W " <> pShow cat
+  dir <- getDataFileName "examples"
+  log $ pack dir
+  pure ()
 
 runChecks :: NixLinter -> IO ()
 runChecks (opts@NixLinter{..}) = do
