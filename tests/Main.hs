@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase          #-}
 {-# LANGUAGE MonadComprehensions #-}
 {-# LANGUAGE TemplateHaskell     #-}
 
@@ -47,7 +48,10 @@ case_examples_match = let
       category <- parseCategory strippedName
       let check = checkCategories $ Set.toList category
 
-      Success parsed <- parseNixFileLoc $ exampleDir </> example
+      parsed <- parseNixFileLoc (exampleDir </> example) >>= \case
+        Success x   -> pure x
+        Failure err -> assertFailure (show err)
+
       let offenses = Set.fromList $ offense <$> check parsed
       assertEqual strippedName offenses category
 
