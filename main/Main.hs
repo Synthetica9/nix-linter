@@ -15,7 +15,7 @@ module Main where
 import           Prelude                hiding (log)
 
 import           Control.Arrow          ((&&&), (>>>))
-import           Control.Monad          (join)
+import           Control.Monad          (join, when)
 import           Control.Monad.Trans    (MonadIO, liftIO)
 import           Data.Foldable          (foldMap, for_)
 import           Data.Function          ((&))
@@ -113,8 +113,17 @@ pipeline (NixLinter {..}) combined = let
     & aheadly . parseFiles
     & aheadly . (S.map (combined >>> S.fromList) >>> join)
 
+extraHelp :: OffenseCategory -> IO ()
+extraHelp cat = do
+  print cat
+
 runChecks :: NixLinter -> IO ()
 runChecks (opts@NixLinter{..}) = do
+  when (not $ null help_for) $ do
+    Right cats <- pure (getChecks [] help_for)
+    for_ cats extraHelp
+    exitSuccess
+
   combined <- getCombined check
 
   let withOutHandle = if null out
