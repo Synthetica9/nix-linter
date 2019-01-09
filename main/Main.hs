@@ -48,16 +48,16 @@ import           Nix.Linter.Utils
 
 import           System.Console.CmdArgs
 
-getChecks :: NixLinter -> Either [String] [OffenseCategory]
-getChecks (NixLinter {..}) = let
+getChecks :: [String] -> Either [String] [OffenseCategory]
+getChecks check = let
     defaults = Set.fromList $ category <$> filter defaultEnabled checks
     parsedArgs = sequenceEither $ parseCheckArg <$> check
     categories = (\fs -> foldl (flip ($)) defaults fs) <$> parsedArgs
   in Set.toList <$> categories
 
-getCombined :: NixLinter -> IO Check
-getCombined opts = do
-  enabled <- case getChecks opts of
+getCombined :: [String] -> IO Check
+getCombined check = do
+  enabled <- case getChecks check of
     Right cs -> pure cs
     Left err -> do
       for_ err print
@@ -114,7 +114,7 @@ pipeline (NixLinter {..}) combined = let
 
 runChecks :: NixLinter -> IO ()
 runChecks (opts@NixLinter{..}) = do
-  combined <- getCombined opts
+  combined <- getCombined check
 
   let withOutHandle = if null out
       then ($ stdout)
