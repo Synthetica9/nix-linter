@@ -28,7 +28,7 @@ nixLinter = NixLinter
   } &= verbosity &= details (mkChecksHelp Nix.Linter.checks) &= program "nix-linter"
 
 mkChecksHelp :: [AvailableCheck] -> [String]
-mkChecksHelp xs = "Available checks:" : (mkDetails <$> xs) where
+mkChecksHelp xs = "Available checks (See `nix-linter --help-for [CHECK]` for more details): " : (mkDetails <$> xs) where
   mkDetails (AvailableCheck{..}) = "    " ++ show category ++ mkDis defaultEnabled
   mkDis False = " (disabled by default)"
   mkDis _     = ""

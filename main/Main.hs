@@ -12,7 +12,7 @@
 
 module Main where
 
-import           Prelude                hiding (log)
+import           Prelude                hiding (log, readFile)
 
 import           Control.Arrow          ((&&&), (>>>))
 import           Control.Monad          (join, when)
@@ -20,7 +20,8 @@ import           Control.Monad.Trans    (MonadIO, liftIO)
 import           Data.Foldable          (foldMap, for_)
 import           Data.Function          ((&))
 import           Data.List              (isSuffixOf)
-import           Data.Text              (Text, pack)
+import           Data.Text              (Text)
+import qualified Data.Text              as T
 
 import           Data.Text.IO
 import           Path.Internal          (toFilePath)
@@ -117,15 +118,21 @@ pipeline (NixLinter {..}) combined = let
 
 extraHelp :: OffenseCategory -> IO ()
 extraHelp cat = do
-  log $ "-W " <> pShow cat
-  dir <- getDataFileName "examples"
-  log $ pack dir
-  pure ()
+  log $ "-W " <> pShow cat <> "\n"
+
+  example <- getDataFileName ("examples/" <> show cat <> ".nix")
+  mainExample <- readFile example
+  let indented = T.unlines $ ("    " <>) <$> T.lines mainExample
+  log $ indented <> "\n"
 
 runChecks :: NixLinter -> IO ()
 runChecks (opts@NixLinter{..}) = do
   when (not $ null help_for) $ do
-    Right cats <- pure (getChecks [] help_for)
+    cats <- case (getChecks [] help_for) of
+      Left err -> do
+        for_ err (log . T.pack)
+        exitFailure
+      Right xs -> pure xs
     for_ cats extraHelp
     exitSuccess
 
