@@ -39,8 +39,7 @@ case_all_offense_categories_covered = do
   (assertEqual "" `on` Set.fromList) all available
 
 case_examples_match :: Assertion
-case_examples_match = let
-  in do
+case_examples_match = do
     exampleDir <- liftIO $ getDataFileName "examples"
     examples <- liftIO $ listDirectory exampleDir
     for_ examples $ \example -> do
