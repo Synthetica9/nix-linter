@@ -26,6 +26,7 @@ import qualified Data.Text              as T
 import           Data.Text.IO
 import           Path.Internal          (toFilePath)
 import           Path.IO                (getCurrentDir, listDir, resolveDir')
+import           System.Console.Pretty
 import           System.Exit
 import           System.IO              (IOMode (..), stderr, stdout, withFile)
 
@@ -118,7 +119,7 @@ pipeline (NixLinter {..}) combined = let
 
 extraHelp :: OffenseCategory -> IO ()
 extraHelp cat = do
-  log $ "-W " <> pShow cat <> "\n"
+  log $ "-W " <> (color Blue $ style Bold $ pShow cat) <> "\n"
 
   example <- getDataFileName ("examples/" <> show cat <> ".nix")
   mainExample <- readFile example

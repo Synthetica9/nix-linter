@@ -101,6 +101,7 @@ executable nix-linter
     mtl >=1.1,
     path-io >=1.4,
     path >= 0.6,
+    pretty-terminal >= 0.1 && < 0.2,
 
     -- Packages also used in the library:
     text,
