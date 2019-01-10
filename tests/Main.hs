@@ -1,6 +1,5 @@
-{-# LANGUAGE LambdaCase          #-}
-{-# LANGUAGE MonadComprehensions #-}
-{-# LANGUAGE TemplateHaskell     #-}
+{-# LANGUAGE LambdaCase      #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 import           Control.Monad.Trans      (liftIO)
 import           Data.Char                (toLower)
@@ -60,9 +59,9 @@ case_all_categories_have_example =
     let all = [minBound..maxBound] :: [OffenseCategory]
     exampleDir <- liftIO $ getDataFileName "examples"
     diff <- concat <$$> for all $ \cat -> do
-      let path = exampleDir <> "/" <> show cat <> ".nix"
+      let path = exampleDir </> show cat <> ".nix"
       exists <- doesFileExist path
-      pure $ if exists then [] else [cat]
+      pure $ [ cat | not exists ]
     assertBool ("Missing: " ++ show diff) (null diff)
 
 main = $defaultMainGenerator
