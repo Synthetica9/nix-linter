@@ -19,10 +19,12 @@ import           Control.Monad          (join)
 import           Control.Monad.Trans    (MonadIO, liftIO)
 import           Data.Foldable          (foldMap, for_)
 import           Data.Function          ((&))
+import           Data.IORef
 import           Data.List              (isSuffixOf)
-import           Data.Text              (Text)
+import           Data.Text              (Text, pack)
 
 import           Data.Text.IO
+
 import           Path.Internal          (toFilePath)
 import           Path.IO                (getCurrentDir, listDir, resolveDir')
 import           System.Exit
@@ -108,7 +110,8 @@ pipeline (NixLinter {..}) combined = let
   in
     S.fromList files
     & walk
-    & S.filter (isSuffixOf ".nix")
+    & S.filter ((recursive -->) <$> isSuffixOf ".nix")
+    & S.map (\p -> if p == "-" then "/dev/stdin" else p)
     & aheadly . parseFiles
     & aheadly . (S.map (combined >>> S.fromList) >>> join)
 
@@ -127,7 +130,14 @@ runChecks (opts@NixLinter{..}) = do
 
       results = pipeline opts combined
 
-  noIssues <- S.null results
-  withOutHandle $ \handle -> S.mapM_ (liftIO . printer handle) results
+  -- We can't use the naive implementation here, because that opens the files
+  -- multiple times
+  withOutHandle $ \handle -> do
+    hasIssues <- newIORef False
+    runStream $ flip S.mapM results $ \result -> do
+      printer handle result
+      -- "Smuggle" the result out of the Streamly datatype
+      writeIORef hasIssues True
 
-  if noIssues then exitSuccess else exitFailure
+    hadIssues <- readIORef hasIssues
+    if hadIssues then exitFailure else exitSuccess
