@@ -2,8 +2,9 @@ language: nix
 script:
   - set -o pipefail
   - nix-env -iA cachix -f https://cachix.org/api/v1/install
-  - "[[ -v DISABLED ]] && ARG=\"--argstr nixpkgsCommit $NIXPKGS_CHANNEL\" || :"
-  - nix-build -A nix-linter $ARG | (if [[ "$TRAVIS_BRANCH" = "master" ]]; then cachix push nix-linter; fi) || [[ -v DISABLED ]]
+  - "[[ -v NIXPKGS_CHANNEL ]] && ARG=\"--argstr nixpkgsCommit $NIXPKGS_CHANNEL\" || :"
+  - nix-build -A nix-linter $ARG | (if [[ "$TRAVIS_BRANCH" = "master" ]]; then cachix push nix-linter; fi)
+env: # Alllow for failures
 matrix:
   include:
     - name: "Default build"
@@ -13,6 +14,9 @@ matrix:
       env:
         - NIXPKGS_CHANNEL=nixpkgs-unstable
         - DISABLED=true
+  allow_failures:
+    - env: DISABLED=true
+  fast_finish: true
 before_deploy: "./update_readme.sh"
 deploy:
   provider: pages
