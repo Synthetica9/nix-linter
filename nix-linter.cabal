@@ -90,6 +90,7 @@ executable nix-linter
   main-is: Main.hs
   other-modules:
     Opts
+    Paths_nix_linter
   hs-source-dirs: main
   default-language: Haskell2010
   build-depends:
