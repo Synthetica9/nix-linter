@@ -25,6 +25,8 @@ deploy:
     branch: master
     condition:
       - '! -v NIXPKGS_CHANNEL '
+      # Check that the README has changed. This is the only thing that we are currently using deploy for.
+      - '-n "$(git diff README.md)"'
       # Check this, so we don't get a deploy loop
       - '$(git log -1 --pretty=format:"%ae") != "deploy@travis-ci.org"'
   file:
