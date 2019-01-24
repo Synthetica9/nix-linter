@@ -2,8 +2,7 @@ language: nix
 script:
   - set -o pipefail
   - nix-env -iA cachix -f https://cachix.org/api/v1/install
-
-  - "[ -n \"$NIXPKGS_CHANNEL\" ] && ARG=\"--argstr nixpkgsCommit $NIXPKGS_CHANNEL\""
+  - "[ -n \"$NIXPKGS_CHANNEL\" ] && ARG=\"--argstr nixpkgsCommit $NIXPKGS_CHANNEL\" || :"
   - nix-build -A nix-linter $ARG | (if [ "$TRAVIS_BRANCH" = "master" ]; then cachix push nix-linter; fi) || [ "$DISABLED" = "true" ]
 matrix:
   include:
