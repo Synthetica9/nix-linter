@@ -1,3 +1,4 @@
+{-# LANGUAGE LambdaCase      #-}
 {-# LANGUAGE TemplateHaskell #-}
 
 import           Control.Monad.Trans      (liftIO)
@@ -7,7 +8,7 @@ import           Data.Function            (on)
 import           Data.Set                 ((\\))
 import qualified Data.Set                 as Set
 import           Data.Traversable         (for)
-import           System.Directory         (listDirectory)
+import           System.Directory         (doesFileExist, listDirectory)
 import           System.FilePath          ((</>))
 
 import           Nix.Linter
@@ -37,8 +38,7 @@ case_all_offense_categories_covered = do
   (assertEqual "" `on` Set.fromList) all available
 
 case_examples_match :: Assertion
-case_examples_match = let
-  in do
+case_examples_match = do
     exampleDir <- liftIO $ getDataFileName "examples"
     examples <- liftIO $ listDirectory exampleDir
     for_ examples $ \example -> do
@@ -46,20 +46,22 @@ case_examples_match = let
       category <- parseCategory strippedName
       let check = checkCategories $ Set.toList category
 
-      Success parsed <- parseNixFileLoc $ exampleDir </> example
+      parsed <- parseNixFileLoc (exampleDir </> example) >>= \case
+        Success x   -> pure x
+        Failure err -> assertFailure (show err)
+
       let offenses = Set.fromList $ offense <$> check parsed
       assertEqual strippedName offenses category
 
 case_all_categories_have_example :: Assertion
 case_all_categories_have_example =
   do
-    let all = Set.fromList ([minBound..maxBound] :: [OffenseCategory])
+    let all = [minBound..maxBound] :: [OffenseCategory]
     exampleDir <- liftIO $ getDataFileName "examples"
-    examples <- liftIO $ listDirectory exampleDir
-    let stripped = stripExtension <$> examples
-    parsed <- for stripped $ liftIO . parseCategory
-    let union = Set.unions parsed
-        diff = all \\ union
-    assertEqual ("Missing: " ++ show diff) union all
+    diff <- concat <$$> for all $ \cat -> do
+      let path = exampleDir </> show cat <> ".nix"
+      exists <- doesFileExist path
+      pure $ [ cat | not exists ]
+    assertBool ("Missing: " ++ show diff) (null diff)
 
 main = $defaultMainGenerator

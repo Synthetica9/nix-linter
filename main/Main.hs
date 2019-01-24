@@ -12,21 +12,23 @@
 
 module Main where
 
-import           Prelude                hiding (log)
+import           Prelude                hiding (log, readFile)
 
 import           Control.Arrow          ((>>>))
-import           Control.Monad          (join)
+import           Control.Monad          (join, when)
 import           Control.Monad.Trans    (MonadIO, liftIO)
 import           Data.Foldable          (foldMap, for_)
 import           Data.Function          ((&))
 import           Data.IORef
-import           Data.List              (isSuffixOf)
+import           Data.List              (isSuffixOf, sortOn)
 import           Data.Text              (Text)
+import qualified Data.Text              as T
 
 import           Data.Text.IO
 
 import           Path.Internal          (toFilePath)
 import           Path.IO                (listDir, resolveDir')
+import           System.Console.Pretty
 import           System.Exit
 import           System.IO              (IOMode (..), stderr, stdout, withFile)
 
@@ -48,18 +50,21 @@ import           Nix.Linter
 import           Nix.Linter.Types
 import           Nix.Linter.Utils
 
+import           Paths_nix_linter
+
 import           System.Console.CmdArgs
 
-getChecks :: [String] -> Either [String] [OffenseCategory]
-getChecks check = let
-    defaults = Set.fromList $ category <$> filter defaultEnabled checks
+getChecks :: [OffenseCategory] -> [String] -> Either [String] [OffenseCategory]
+getChecks defaults' check = let
+    defaults = Set.fromList $ defaults'
     parsedArgs = sequenceEither $ parseCheckArg <$> check
     categories = (\fs -> foldl (flip ($)) defaults fs) <$> parsedArgs
   in Set.toList <$> categories
 
 getCombined :: [String] -> IO Check
 getCombined check = do
-  enabled <- case getChecks check of
+  let defaults = category <$> filter defaultEnabled checks
+  enabled <- case getChecks defaults check of
     Right cs -> pure cs
     Left err -> do
       for_ err print
@@ -115,8 +120,26 @@ pipeline (NixLinter {..}) combined = let
     & aheadly . parseFiles
     & aheadly . (S.map (combined >>> S.fromList) >>> join)
 
+extraHelp :: OffenseCategory -> IO ()
+extraHelp cat = do
+  log $ "-W " <> (color Blue $ style Bold $ pShow cat) <> "\n"
+
+  example <- getDataFileName ("examples/" <> show cat <> ".nix")
+  mainExample <- readFile example
+  let indented = T.unlines $ ("    " <>) <$> T.lines mainExample
+  log $ indented <> "\n"
+
 runChecks :: NixLinter -> IO ()
 runChecks (opts@NixLinter{..}) = do
+  when (not $ null help_for) $ do
+    cats <- case (getChecks [] help_for) of
+      Left err -> do
+        for_ err (log . T.pack)
+        exitFailure
+      Right xs -> pure xs
+    mapM_ extraHelp (sortOn show cats)
+    exitSuccess
+
   combined <- getCombined check
 
   let withOutHandle = if null out
