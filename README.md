@@ -34,18 +34,19 @@ The nix-linter program
 nix-linter [OPTIONS] [FILES]
 
 Common flags:
-  -W --check=ITEM   checks to enable
-  -j --json         Use JSON output
-  -J --json-stream  Use a newline-delimited stream of JSON objects instead of
-                    a JSON list (implies --json)
-  -r --recursive    Recursively walk given directories (like find)
-  -o --out[=FILE]   File to output to
-  -? --help         Display help message
-  -V --version      Print version information
-  -v --verbose      Loud verbosity
-  -q --quiet        Quiet verbosity
+  -W --check=ITEM       checks to enable
+  -j --json             Use JSON output
+  -J --json-stream      Use a newline-delimited stream of JSON objects
+                        instead of a JSON list (implies --json)
+  -r --recursive        Recursively walk given directories (like find)
+  -o --out[=FILE]       File to output to
+  -h --help-for=CHECKS
+  -? --help             Display help message
+  -V --version          Print version information
+  -v --verbose          Loud verbosity
+  -q --quiet            Quiet verbosity
 
-Available checks:
+Available checks (See `nix-linter --help-for [CHECK]` for more details):
     DIYInherit
     EmptyInherit
     EmptyLet
