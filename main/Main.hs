@@ -14,19 +14,19 @@ module Main where
 
 import           Prelude                hiding (log)
 
-import           Control.Arrow          ((&&&), (>>>))
+import           Control.Arrow          ((>>>))
 import           Control.Monad          (join)
 import           Control.Monad.Trans    (MonadIO, liftIO)
 import           Data.Foldable          (foldMap, for_)
 import           Data.Function          ((&))
 import           Data.IORef
 import           Data.List              (isSuffixOf)
-import           Data.Text              (Text, pack)
+import           Data.Text              (Text)
 
 import           Data.Text.IO
 
 import           Path.Internal          (toFilePath)
-import           Path.IO                (getCurrentDir, listDir, resolveDir')
+import           Path.IO                (listDir, resolveDir')
 import           System.Exit
 import           System.IO              (IOMode (..), stderr, stdout, withFile)
 
