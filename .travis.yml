@@ -11,8 +11,7 @@ matrix:
     - name: "NixOS 18.09"
       env: NIXPKGS_CHANNEL=nixos-18.09
     - name: "Nixpkgs Unstable"
-      env:
-        - NIXPKGS_CHANNEL=nixpkgs-unstable
+      env: NIXPKGS_CHANNEL=nixpkgs-unstable
   allow_failures:
     - env: NIXPKGS_CHANNEL=nixpkgs-unstable
   fast_finish: true
