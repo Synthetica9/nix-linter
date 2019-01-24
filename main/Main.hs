@@ -19,7 +19,7 @@ import           Control.Monad          (join, when)
 import           Control.Monad.Trans    (MonadIO, liftIO)
 import           Data.Foldable          (foldMap, for_)
 import           Data.Function          ((&))
-import           Data.List              (isSuffixOf)
+import           Data.List              (isSuffixOf, sortOn)
 import           Data.Text              (Text)
 import qualified Data.Text              as T
 
@@ -134,7 +134,7 @@ runChecks (opts@NixLinter{..}) = do
         for_ err (log . T.pack)
         exitFailure
       Right xs -> pure xs
-    for_ cats extraHelp
+    mapM_ extraHelp (sortOn show cats)
     exitSuccess
 
   combined <- getCombined check
