@@ -2,8 +2,8 @@ language: nix
 script:
   - set -o pipefail
   - nix-env -iA cachix -f https://cachix.org/api/v1/install
-  - "[ -n \"$NIXPKGS_CHANNEL\" ] && ARG=\"--argstr nixpkgsCommit $NIXPKGS_CHANNEL\" || :"
-  - nix-build -A nix-linter $ARG | (if [ "$TRAVIS_BRANCH" = "master" ]; then cachix push nix-linter; fi) || [ "$DISABLED" = "true" ]
+  - "[[ -v DISABLED ]] && ARG=\"--argstr nixpkgsCommit $NIXPKGS_CHANNEL\" || :"
+  - nix-build -A nix-linter $ARG | (if [[ "$TRAVIS_BRANCH" = "master" ]]; then cachix push nix-linter; fi) || [[ -v DISABLED ]]
 matrix:
   include:
     - name: "Default build"
@@ -21,7 +21,9 @@ deploy:
   skip-cleanup: true
   on:
     branch: master
-    condition: '"$DISABLED" != "true"'
+    condition:
+      - '! -v DISABLED'
+      - '! -v NIXPKGS_CHANNEL '
   file:
     README.md
   github_token:
