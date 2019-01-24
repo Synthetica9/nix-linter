@@ -13,9 +13,8 @@ matrix:
     - name: "Nixpkgs Unstable"
       env:
         - NIXPKGS_CHANNEL=nixpkgs-unstable
-        - DISABLED=true
   allow_failures:
-    - env: DISABLED=true
+    - env: NIXPKGS_CHANNEL=nixpkgs-unstable
   fast_finish: true
 before_deploy: "./update_readme.sh"
 deploy:
@@ -26,7 +25,6 @@ deploy:
   on:
     branch: master
     condition:
-      - '! -v DISABLED'
       - '! -v NIXPKGS_CHANNEL '
       # Check this, so we don't get a deploy loop
       - '$(git log -1 --pretty=format:"%ae") != "deploy@travis-ci.org"'
