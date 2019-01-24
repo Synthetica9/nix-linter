@@ -2,6 +2,12 @@ module Nix.Linter.Utils where
 
 import           Data.Either (partitionEithers)
 
+-- |Logical implication
+(-->) :: Bool -> Bool -> Bool
+True --> False = False
+_    --> _     = True
+
+
 (<$$>) :: (Functor f, Functor g) => (a -> b) -> f (g a) -> f (g b)
 (<$$>) = fmap . fmap
 

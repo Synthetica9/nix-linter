@@ -1,20 +1,20 @@
 language: nix
 script:
   - set -o pipefail
-  - nix-channel --list
-  - nix-channel --add "https://nixos.org/channels/$NIXPKGS_CHANNEL" nixpkgs
-  - nix-channel --update
-  - nix-channel --list
   - nix-env -iA cachix -f https://cachix.org/api/v1/install
-  - nix-build -A nix-linter | (if [ "$TRAVIS_BRANCH" = "master" ]; then cachix push nix-linter; fi) || [ "$DISABLED" = "true" ]
+  - "[[ -v NIXPKGS_CHANNEL ]] && ARG=\"--argstr nixpkgsCommit $NIXPKGS_CHANNEL\" || :"
+  - nix-build -A nix-linter $ARG | (if [[ "$TRAVIS_BRANCH" = "master" ]]; then cachix push nix-linter; fi)
+env: # Alllow for failures
 matrix:
   include:
+    - name: "Default build"
     - name: "NixOS 18.09"
       env: NIXPKGS_CHANNEL=nixos-18.09
     - name: "Nixpkgs Unstable"
-      env:
-        - NIXPKGS_CHANNEL=nixpkgs-unstable
-        - DISABLED=true
+      env: NIXPKGS_CHANNEL=nixpkgs-unstable
+  allow_failures:
+    - env: NIXPKGS_CHANNEL=nixpkgs-unstable
+  fast_finish: true
 before_deploy: "./update_readme.sh"
 deploy:
   provider: pages
@@ -23,7 +23,10 @@ deploy:
   skip-cleanup: true
   on:
     branch: master
-    condition: '"$DISABLED" != "true"'
+    condition:
+      - '! -v NIXPKGS_CHANNEL '
+      # Check this, so we don't get a deploy loop
+      - '$(git log -1 --pretty=format:"%ae") != "deploy@travis-ci.org"'
   file:
     README.md
   github_token:
