@@ -1,14 +1,12 @@
 language: nix
 script:
   - set -o pipefail
-  - nix-channel --list
-  - nix-channel --add "https://nixos.org/channels/$NIXPKGS_CHANNEL" nixpkgs
-  - nix-channel --update
-  - nix-channel --list
   - nix-env -iA cachix -f https://cachix.org/api/v1/install
-  - nix-build -A nix-linter | (if [ "$TRAVIS_BRANCH" = "master" ]; then cachix push nix-linter; fi) || [ "$DISABLED" = "true" ]
+  - [[ -v NIXPKGS_CHANNEL ]] && ARG="--argstr nixpkgsCommit $NIXPKGS_CHANNEL"
+  - nix-build -A nix-linter $ARG | (if [ "$TRAVIS_BRANCH" = "master" ]; then cachix push nix-linter; fi) || [ "$DISABLED" = "true" ]
 matrix:
   include:
+    - name: "Default build"
     - name: "NixOS 18.09"
       env: NIXPKGS_CHANNEL=nixos-18.09
     - name: "Nixpkgs Unstable"

@@ -1,4 +1,8 @@
-{ pkgs ? import <nixpkgs> {} }:
+{ nixpkgsCommit ? "7f85bfd70d591ff7f369345ae602a92c1a633722"
+, nixpkgsURL ? "https://github.com/NixOS/nixpkgs-channels/archive/${nixpkgsCommit}.tar.gz"
+, pkgsPath ? builtins.fetchTarball nixpkgsURL
+, pkgs ? import pkgsPath {}
+}:
 with pkgs;
 
 (haskellPackages.override ({
