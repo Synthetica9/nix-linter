@@ -13,7 +13,6 @@ import           Data.Text                 (isPrefixOf, pack)
 import           Nix.Expr.Types
 import           Nix.Expr.Types.Annotated
 
--- import           Nix.TH
 import           Nix.Linter.Tools.FreeVars
 
 import           Nix.Linter.Traversals

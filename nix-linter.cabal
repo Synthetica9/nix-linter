@@ -68,7 +68,7 @@ library
 
   build-depends:
     base >=4.9,
-    hnix >=0.5,
+    hnix >=0.6 && < 0.7,
     data-fix,
     fixplate >= 0.1.7,
     cmdargs >= 0.10,
