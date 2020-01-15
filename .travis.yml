@@ -8,8 +8,8 @@ env: # Alllow for failures
 matrix:
   include:
     - name: "Default build"
-    - name: "NixOS 18.09"
-      env: NIXPKGS_CHANNEL=nixos-18.09
+    - name: "NixOS 19.09"
+      env: NIXPKGS_CHANNEL=nixos-19.09
     - name: "Nixpkgs Unstable"
       env: NIXPKGS_CHANNEL=nixpkgs-unstable
   allow_failures:
