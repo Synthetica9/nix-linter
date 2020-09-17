@@ -21,7 +21,6 @@ import           System.Console.CmdArgs   (Data)
 import           Nix.Expr.Types
 import           Nix.Expr.Types.Annotated
 import           Nix.Pretty               (prettyNix)
-import           Text.Megaparsec.Pos      (unPos)
 
 import           Nix.Linter.Traversals
 import           Nix.Linter.Utils
