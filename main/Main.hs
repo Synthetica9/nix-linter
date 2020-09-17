@@ -157,7 +157,7 @@ runChecks (opts@NixLinter{..}) = do
   -- multiple times
   withOutHandle $ \handle -> do
     hasIssues <- newIORef False
-    runStream $ flip S.mapM results $ \result -> do
+    S.drain $ flip S.mapM results $ \result -> do
       printer handle result
       -- "Smuggle" the result out of the Streamly datatype
       writeIORef hasIssues True
