@@ -17,7 +17,7 @@ import           Prelude                hiding (log, readFile)
 import           Control.Arrow          ((>>>))
 import           Control.Monad          (join, when)
 import           Control.Monad.Trans    (MonadIO, liftIO)
-import           Data.Foldable          (foldMap, for_)
+import           Data.Foldable          (for_)
 import           Data.Function          ((&))
 import           Data.IORef
 import           Data.List              (isSuffixOf, sortOn)
