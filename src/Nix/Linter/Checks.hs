@@ -61,7 +61,7 @@ checkEmptyInherit warn e = [ (warn EmptyInherit) {pos=singletonSpan loc}
 
 checkUnneededRec :: CheckBase
 checkUnneededRec warn e = [ warn UnneededRec
-  | NRecSet_ _ binds <- [unFix e]
+  | NSet_ _ann NRecursive binds <- [unFix e]
   , not $ or $ choose binds <&> \case
     (bind, others) -> case bind of
       NamedVar (StaticKey name :| []) _ _ -> all (noRef name) (values others)
@@ -138,7 +138,7 @@ checkLetInInheritRecset warn e = [ warn LetInInheritRecset
   & note' varName name
   | NLet_ _ binds usedIn <- [unFix e]
   , (inner, outer) <- chooseTrees usedIn
-  , NRecSet_ _ set <- [unFix inner]
+  , NSet_ _ann NRecursive set <- [unFix inner]
   , (this, others) <- choose binds
   , let names = simpleBoundNames this
   , let allNamesFree x = all (`noRef` x) names
@@ -167,7 +167,7 @@ checkUnfortunateArgName warn e = [ warn UnfortunateArgName
   , let valid = not . plainInheritsAnywhere name
   -- These are expensive! Do them last:
   , valid context
-  , valid $ Fix $ NRecSet_ generated bindings
+  , valid $ Fix $ NSet_ generated NRecursive bindings
   , valid outer
   ]
 

@@ -38,9 +38,9 @@ getFreeVar = Fix . NSym_ generated . getFreeVarName
 
 topLevelBinds :: NExprLoc -> ([Binding NExprLoc], NExprLoc, Bool)
 topLevelBinds e = case unFix e of
-  NRecSet_ _ xs   -> (xs, e, True)
+  NSet_ _ann NRecursive xs   -> (xs, e, True)
   -- Nonrecursive, so no context. We make up a context that can't possibly be valid.
-  NSet_    _ xs   -> (xs, getFreeVar e, True)
+  NSet_ _ann NNonRecursive xs   -> (xs, getFreeVar e, True)
   -- `let x = 1; y = x; in y` is valid, so e is the context!
   NLet_    _ xs _ -> (xs, e, False)
   -- Otherwise, our context is just empty!
