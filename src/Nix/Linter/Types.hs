@@ -109,7 +109,7 @@ singletonSpan :: SourcePos -> SrcSpan
 singletonSpan = join SrcSpan
 
 getNote :: Offense -> Text -> Maybe Text
-getNote (Offense {..}) k = lookup k lt
+getNote (Offense {..}) key = lookup key lt
   where lt = [ (k, v) | Note k v <- notes ]
 
 -- TODO: escape
@@ -118,12 +118,12 @@ quoteVar v = "`" <> v <> "`"
 
 describe :: Offense -> Text
 describe full@(Offense {..}) = let
-    note = getNote full
+    fullNote = getNote full
     o = offense
     -- TODO: extract
-    varName = note "varName"
-    now = note "now"
-    suggested = note "suggested"
+    varName = fullNote "varName"
+    now = fullNote "now"
+    suggested = fullNote "suggested"
 
     whyNot = fmap (pack . show . prettyNix) rewrite
   in case o of
