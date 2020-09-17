@@ -73,12 +73,8 @@ library
     fixplate >= 0.1.7,
     cmdargs >= 0.10,
     aeson >= 1.3,
-    path-io >= 0.12,
-    parallel-io >= 0.3,
     containers >= 0.5,
-    text >= 0.1.2.3,
-    megaparsec,
-    pandoc
+    text >= 0.1.2.3
 
   hs-source-dirs:      src
 
