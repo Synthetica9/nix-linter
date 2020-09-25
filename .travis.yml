@@ -9,7 +9,7 @@ matrix:
   include:
     - name: "Default build"
     - name: "NixOS 19.09"
-      env: NIXPKGS_CHANNEL=nixos-19.09
+      env: NIXPKGS_CHANNEL=nixos-20.03
     - name: "Nixpkgs Unstable"
       env: NIXPKGS_CHANNEL=nixpkgs-unstable
   allow_failures:
