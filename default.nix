@@ -1,16 +1,9 @@
-{ nixpkgsCommit ? "4c7a9a0a88ea6e8efe43661f215e0c5d32504f2e"
-, nixpkgsURL ? "https://github.com/NixOS/nixpkgs/archive/${nixpkgsCommit}.tar.gz"
-, pkgsPath ? builtins.fetchTarball nixpkgsURL
-, pkgs ? import pkgsPath {}
-}:
+{ nixpkgsCommit ? "72b9660dc18ba347f7cd41a9504fc181a6d87dc3", nixpkgsURL ?
+  "https://github.com/NixOS/nixpkgs/archive/${nixpkgsCommit}.tar.gz"
+, pkgsPath ? builtins.fetchTarball nixpkgsURL, pkgs ? import pkgsPath { } }:
 with pkgs;
 
-(haskellPackages.override ({
-    overrides = self: super: {
-    };
-})).extend (haskell.lib.packageSourceOverrides {
-  nix-linter = ./.;
-})
-// {
+(haskellPackages.override ({ overrides = self: super: { }; })).extend
+(haskell.lib.packageSourceOverrides { nix-linter = ./.; }) // {
   inherit pkgs;
 }
