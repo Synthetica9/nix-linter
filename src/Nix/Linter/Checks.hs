@@ -9,7 +9,7 @@ import           Data.Char                (isUpper, toLower)
 import           Data.Function            ((&))
 import           Data.List                (isInfixOf, sortOn)
 import           Data.List.NonEmpty       (NonEmpty (..))
-import           Data.Maybe               (fromJust, fromMaybe, maybeToList)
+import           Data.Maybe               (catMaybes, fromJust, fromMaybe, maybeToList)
 import           Data.Ord                 (Down (..))
 import           Data.Text                (Text)
 
@@ -45,11 +45,14 @@ checkUnusedLetBinding warn e = [ (warn UnusedLetBind)
 checkUnusedArg :: CheckBase
 checkUnusedArg warn e = [ warn UnusedArg
   & note' varName name
- | NAbs_ _ params usedIn <- [unFix e]
- , name <- case params of
-    Param name           -> [name]
-    ParamSet xs _ global -> maybeToList global ++ (fst <$> xs)
+  | NAbs_ _ params usedIn <- [unFix e]
+  , let (names, siblingExprs) = case params of
+          Param name -> ([name], [])
+          ParamSet xs _ global ->
+            (maybeToList global ++ (fst <$> xs), catMaybes (snd <$> xs))
+  , name <- names
   , nonIgnoredName name
+  , all (noRef name) siblingExprs
   , name `noRef` usedIn
   ]
 
