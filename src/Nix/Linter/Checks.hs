@@ -44,8 +44,9 @@ checkUnusedLetBinding warn e = [ (warn UnusedLetBind)
 
 checkUnusedArg :: CheckBase
 checkUnusedArg warn e = [ warn UnusedArg
+  & setLoc begin
   & note' varName name
-  | NAbs_ _ params usedIn <- [unFix e]
+  | NAbs_ (SrcSpan begin _) params usedIn <- [unFix e]
   , let (names, siblingExprs) = case params of
           Param name -> ([name], [])
           ParamSet xs _ global ->
