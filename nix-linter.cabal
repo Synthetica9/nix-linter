@@ -94,7 +94,7 @@ executable nix-linter
     nix-linter,
 
     -- Packages only used here:
-    streamly >=0.5,
+    streamly >=0.7.2,
     mtl >=1.1,
     path-io >=1.4,
     path >= 0.6,

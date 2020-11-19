@@ -38,8 +38,7 @@ import           Nix.Parser
 
 import qualified Data.Set               as Set
 
-import           Streamly
-import           Streamly.Prelude       ((.:))
+import           Streamly.Prelude       ((.:) , IsStream , aheadly , serial)
 import qualified Streamly.Prelude       as S
 
 import           Data.Aeson             (encode)
