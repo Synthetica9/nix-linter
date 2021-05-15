@@ -47,8 +47,8 @@ case_examples_match = do
       let check = checkCategories $ Set.toList category
 
       parsed <- parseNixFileLoc (exampleDir </> example) >>= \case
-        Success x   -> pure x
-        Failure err -> assertFailure (show err)
+        Right x  -> pure x
+        Left err -> assertFailure (show err)
 
       let offenses = Set.fromList $ offense <$> check parsed
       assertEqual strippedName offenses category
