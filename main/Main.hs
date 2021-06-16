@@ -95,9 +95,9 @@ listDirRecursive path = resolveDir' path >>= readDir
 
 parseFiles = S.mapMaybeM $ (\path ->
   parseNixFileLoc path >>= \case
-    Success parse -> do
+    Right parse -> do
       pure $ Just parse
-    Failure why -> do
+    Left why -> do
       liftIO $ whenNormal $ log $ "Failure when parsing:\n" <> pShow why
       pure Nothing)
 
