@@ -51,6 +51,9 @@ jobs:
           }}
         restore-keys: ${{ runner.os }}-${{ matrix.ghc }}-
 
+    - name: Install system dependencies
+      run: sudo apt-get install libsodium-dev
+
     - name: Build dependencies
       run: |
         cabal build all --only-dependencies $cabalConfig
