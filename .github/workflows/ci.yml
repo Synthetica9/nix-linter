@@ -70,5 +70,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: cachix/install-nix-action@v13
+    - uses: cachix/cachix-action@v10
+      with:
+        name: nix-linter
+        signingKey: '${{ secrets.CACHIX_PRIVATE_KEY }}'
     - uses: actions/checkout@v2
     - run: nix-build
+    - run: nix-shell --run "echo ok"
