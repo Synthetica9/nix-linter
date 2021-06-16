@@ -1,3 +1,3 @@
 set -euxo pipefail
 
-$(nix-build -A nix-linter)/bin/nix-linter --help
+$(nix-build --no-out-link)/bin/nix-linter --help
