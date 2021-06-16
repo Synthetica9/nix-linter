@@ -10,7 +10,7 @@ name:                nix-linter
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             0.2.0.1
+version:             0.2.0.2
 
 -- A short (one-line) description of the package.
 synopsis:            Linter for Nix(pkgs), based on hnix
@@ -68,7 +68,7 @@ library
 
   build-depends:
     base >=4.9,
-    hnix >=0.8 && < 0.11,
+    hnix >=0.13 && < 0.14,
     data-fix,
     fixplate >= 0.1.7,
     cmdargs >= 0.10,

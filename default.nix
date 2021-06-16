@@ -1,9 +1,16 @@
-{ nixpkgsCommit ? "72b9660dc18ba347f7cd41a9504fc181a6d87dc3", nixpkgsURL ?
-  "https://github.com/NixOS/nixpkgs/archive/${nixpkgsCommit}.tar.gz"
-, pkgsPath ? builtins.fetchTarball nixpkgsURL, pkgs ? import pkgsPath { } }:
-with pkgs;
+{ nixpkgsSrc ? builtins.fetchTarball {
+  url =
+    "https://github.com/NixOS/nixpkgs/archive/51bb9f3e9ab6161a3bf7746e20b955712cef618b.tar.gz"; # nixpkgs-unstable
+  sha256 = "1bqla14c80ani27c7901rnl37kiiqrvyixs6ifvm48p5y6xbv1p7";
+}, pkgs ? import nixpkgsSrc { }, compiler ? null }:
 
-(haskellPackages.override ({ overrides = self: super: { }; })).extend
-(haskell.lib.packageSourceOverrides { nix-linter = ./.; }) // {
-  inherit pkgs;
+let
+  haskellPackages = if compiler == null then
+    pkgs.haskellPackages
+  else
+    pkgs.haskell.packages.${compiler};
+
+in haskellPackages.developPackage {
+  name = "";
+  root = pkgs.nix-gitignore.gitignoreSource [ ] ./.;
 }
