@@ -1,5 +1,10 @@
 # Revision history for nix-linter
 
+## 0.2.0.2 -- 2021-06-16
+
+* Fix compilation with recent hnix
+* Better unused argument warnings
+
 ## ??? -- 2019-??-??
 * Move more internal strings from String to Text
 * Add descriptions of offenses
