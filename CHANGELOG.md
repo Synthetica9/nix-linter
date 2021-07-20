@@ -1,5 +1,9 @@
 # Revision history for nix-linter
 
+## 0.2.0.3 -- 2021-07-20
+
+* Relax bounds on hnix
+
 ## 0.2.0.2 -- 2021-06-16
 
 * Fix compilation with recent hnix
