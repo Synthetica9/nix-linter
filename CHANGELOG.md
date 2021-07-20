@@ -3,6 +3,7 @@
 ## 0.2.0.3 -- 2021-07-20
 
 * Relax bounds on hnix
+* Tighten upper bound on streamly
 
 ## 0.2.0.2 -- 2021-06-16
 
