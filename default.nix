@@ -1,7 +1,7 @@
 { nixpkgsSrc ? builtins.fetchTarball {
   url =
-    "https://github.com/NixOS/nixpkgs/archive/51bb9f3e9ab6161a3bf7746e20b955712cef618b.tar.gz"; # nixpkgs-unstable
-  sha256 = "1bqla14c80ani27c7901rnl37kiiqrvyixs6ifvm48p5y6xbv1p7";
+    "https://github.com/NixOS/nixpkgs/archive/38296d89d41c26a127b69c52421fbee95ceb0d22.tar.gz"; # haskell-updates
+  sha256 = "108c4wm4vfqkgd6awpaskakq26f8ajx729s4bxqvvvfflrzwrlrv";
 }, pkgs ? import nixpkgsSrc { }, compiler ? null }:
 
 let
@@ -12,5 +12,8 @@ let
 
 in haskellPackages.developPackage {
   name = "";
+  overrides = self: super: {
+    streamly = self.streamly_0_8_0;
+  };
   root = pkgs.nix-gitignore.gitignoreSource [ ] ./.;
 }
