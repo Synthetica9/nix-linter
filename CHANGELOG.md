@@ -1,5 +1,9 @@
 # Revision history for nix-linter
 
+## 0.2.0.4 -- 2021-07-20
+
+* Changes for streamly 0.8
+
 ## 0.2.0.3 -- 2021-07-20
 
 * Relax bounds on hnix

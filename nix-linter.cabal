@@ -10,7 +10,7 @@ name:                nix-linter
 -- PVP summary:      +-+------- breaking API changes
 --                   | | +----- non-breaking API additions
 --                   | | | +--- code changes with no API change
-version:             0.2.0.3
+version:             0.2.0.4
 
 -- A short (one-line) description of the package.
 synopsis:            Linter for Nix(pkgs), based on hnix
@@ -94,7 +94,7 @@ executable nix-linter
     nix-linter,
 
     -- Packages only used here:
-    streamly >=0.5 && <0.8,
+    streamly >=0.8,
     mtl >=1.1,
     path-io >=1.4,
     path >= 0.6,

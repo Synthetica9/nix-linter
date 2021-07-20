@@ -17,7 +17,7 @@ import           Prelude                hiding (log, readFile)
 import           Control.Arrow          ((>>>))
 import           Control.Monad          (join, when)
 import           Control.Monad.Trans    (MonadIO, liftIO)
-import           Data.Foldable          (for_)
+import           Data.Foldable          (for_, traverse_)
 import           Data.Function          ((&))
 import           Data.IORef
 import           Data.List              (isSuffixOf, sortOn)
@@ -38,7 +38,6 @@ import           Nix.Parser
 
 import qualified Data.Set               as Set
 
-import           Streamly
 import           Streamly.Prelude       ((.:))
 import qualified Streamly.Prelude       as S
 
@@ -86,12 +85,12 @@ log :: Text -> IO ()
 log = hPutStrLn stderr
 
 -- Example from https://hackage.haskell.org/package/streamly
-listDirRecursive :: (IsStream t, MonadIO m, MonadIO (t m), Monoid (t m FilePath)) => FilePath -> t m FilePath
+listDirRecursive :: (S.IsStream t, MonadIO m, MonadIO (t m), Monoid (t m FilePath)) => FilePath -> t m FilePath
 listDirRecursive path = resolveDir' path >>= readDir
   where
     readDir dir = do
       (dirs, files) <- listDir dir
-      S.fromList (toFilePath <$> files) `serial` foldMap readDir dirs
+      S.fromList (toFilePath <$> files) `S.serial` foldMap readDir dirs
 
 parseFiles = S.mapMaybeM $ (\path ->
   parseNixFileLoc path >>= \case
@@ -102,7 +101,7 @@ parseFiles = S.mapMaybeM $ (\path ->
       pure Nothing)
 
 pipeline (NixLinter {..}) combined = let
-    exitLog x = S.yieldM . liftIO . const (log x >> exitFailure)
+    exitLog x = S.fromEffect . liftIO . const (log x >> exitFailure)
     walker = if recursive
       then (>>= listDirRecursive)
       else id
@@ -117,8 +116,8 @@ pipeline (NixLinter {..}) combined = let
     & walk
     & S.filter ((recursive -->) <$> isSuffixOf ".nix")
     & S.map (\p -> if p == "-" then "/dev/stdin" else p)
-    & aheadly . parseFiles
-    & aheadly . (S.map (combined >>> S.fromList) >>> join)
+    & S.fromAhead . parseFiles
+    & S.fromAhead . (S.map (combined >>> S.fromList) >>> join)
 
 extraHelp :: OffenseCategory -> IO ()
 extraHelp cat = do
@@ -137,7 +136,7 @@ runChecks (opts@NixLinter{..}) = do
         for_ err (log . T.pack)
         exitFailure
       Right xs -> pure xs
-    mapM_ extraHelp (sortOn show cats)
+    traverse_ extraHelp (sortOn show cats)
     exitSuccess
 
   combined <- getCombined check
