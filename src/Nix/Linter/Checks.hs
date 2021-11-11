@@ -35,11 +35,15 @@ checkUnusedLetBinding :: CheckBase
 checkUnusedLetBinding warn e = [ (warn UnusedLetBind)
   & setLoc loc
   & note' varName name
-  | NLet_ _ binds usedIn <- [unFix e]
+  | NLet_ srcSpan binds usedIn <- [unFix e]
   , (bind, others) <- choose binds
-  , NamedVar (StaticKey name :| []) _ loc <- [bind]
-  , all (noRef name) (values others)
-  , name `noRef` usedIn
+  , (name, loc) <- case bind of
+      NamedVar (StaticKey name :| []) _ loc -> [(name, loc)]
+      Inherit _ keys                    loc -> do
+        StaticKey name <- keys
+        [(name, loc)]
+      _ -> []
+  , noRef name $ Fix $ NLet_ srcSpan others usedIn
   ]
 
 checkUnusedArg :: CheckBase
