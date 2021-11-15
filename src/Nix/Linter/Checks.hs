@@ -25,6 +25,7 @@ import           Nix.Expr.Types
 import           Nix.Expr.Types.Annotated
 
 import           Nix.Linter.Tools
+import           Nix.Linter.Tools.FreeVars
 import           Nix.Linter.Types
 import           Nix.Linter.Utils         (choose, sorted, (<$$>), (<&>))
 
@@ -35,15 +36,16 @@ checkUnusedLetBinding :: CheckBase
 checkUnusedLetBinding warn e = [ (warn UnusedLetBind)
   & setLoc loc
   & note' varName name
-  | NLet_ srcSpan binds usedIn <- [unFix e]
-  , (bind, others) <- choose binds
+  | NLet_ _ binds _ <- [unFix e]
+  , free <- [freeVarsIgnoreTopBinds' e]
+  , bind <- binds
   , (name, loc) <- case bind of
       NamedVar (StaticKey name :| []) _ loc -> [(name, loc)]
       Inherit _ keys                    loc -> do
         StaticKey name <- keys
         [(name, loc)]
       _ -> []
-  , noRef name $ Fix $ NLet_ srcSpan others usedIn
+  , not $ Set.member name free
   ]
 
 checkUnusedArg :: CheckBase
