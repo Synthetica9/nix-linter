@@ -27,7 +27,7 @@ import           Nix.Expr.Types.Annotated
 import           Nix.Linter.Tools
 import           Nix.Linter.Tools.FreeVars
 import           Nix.Linter.Types
-import           Nix.Linter.Utils         (choose, sorted, (<$$>), (<&>))
+import           Nix.Linter.Utils         (choose, sorted, (<$$>))
 
 varName :: Text
 varName = "varName"
@@ -72,10 +72,19 @@ checkEmptyInherit warn e = [ (warn EmptyInherit) {pos=singletonSpan loc}
 checkUnneededRec :: CheckBase
 checkUnneededRec warn e = [ warn UnneededRec
   | NSet_ _ann NRecursive binds <- [unFix e]
-  , not $ or $ choose binds <&> \case
-    (bind, others) -> case bind of
-      NamedVar (StaticKey name :| []) _ _ -> all (noRef name) (values others)
-      _                                   -> False
+  , free <- [freeVarsIgnoreTopBinds' e]
+  , not . or $ do
+    bind <- binds
+    name <- case bind of
+      NamedVar (StaticKey name :| []) _ _ -> [name]
+      Inherit _ keys                    _ -> do
+        StaticKey name <- keys
+        [name]
+      -- References to dynamic keys on the LHS are not allowed
+      -- e.g. rec { x = "hi"; ${x} = 5; y = hi; }
+      -- will fail to evaluate, so we don't need to account for it
+      _ -> []
+    pure $ Set.member name free
   ]
 
 checkOpBase :: OffenseCategory -> Pair (UnwrappedNExprLoc -> Bool) -> NBinaryOp -> Bool -> CheckBase
