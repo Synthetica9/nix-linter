@@ -15,6 +15,7 @@ import           Data.Fix
 import           Data.Text                (Text, pack)
 
 import           Data.Aeson
+import qualified Data.Aeson.Key           as K
 import           GHC.Generics
 import           System.Console.CmdArgs   (Data)
 
@@ -53,8 +54,8 @@ data Note
 
 instance ToJSON Note where
   toJSONList xs = object $ toJSON <$$> convert <$> xs where
-    convert (Note a b) = (a, Just b)
-    convert x          = (pack $ show x, Nothing)
+    convert (Note a b) = (K.fromText a, Just b)
+    convert x          = (K.fromText $ pack $ show x, Nothing)
 
 setLoc :: SourcePos -> Offense -> Offense
 setLoc l x = x { pos=singletonSpan l }
@@ -74,8 +75,8 @@ suggest' e = suggest $ stripAnnotation e
 note :: Note -> Offense -> Offense
 note n x = x {notes = n : notes x}
 
-note' :: Text -> Text -> Offense -> Offense
-note' a b = note $ Note a b
+note' :: Text -> VarName -> Offense -> Offense
+note' a (VarName b) = note $ Note a b
 
 getPos :: NExprLoc -> SrcSpan
 getPos = annotation . getCompose . unFix
