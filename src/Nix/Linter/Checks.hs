@@ -35,7 +35,7 @@ checkUnusedLetBinding :: CheckBase
 checkUnusedLetBinding warn e = [ (warn UnusedLetBind)
   & setLoc loc
   & note' varName name
-  | NLet_ _ binds usedIn <- [unFix e]
+  | NLetAnnF _ binds usedIn <- [unFix e]
   , (bind, others) <- choose binds
   , NamedVar (StaticKey name :| []) _ loc <- [bind]
   , all (noRef name) (values others)
@@ -46,10 +46,10 @@ checkUnusedArg :: CheckBase
 checkUnusedArg warn e = [ warn UnusedArg
   & setLoc begin
   & note' varName name
-  | NAbs_ (SrcSpan begin _) params usedIn <- [unFix e]
+  | NAbsAnnF (SrcSpan begin _) params usedIn <- [unFix e]
   , let (names, siblingExprs) = case params of
           Param name -> ([name], [])
-          ParamSet xs _ global ->
+          ParamSet global _ xs ->
             (maybeToList global ++ (fst <$> xs), catMaybes (snd <$> xs))
   , name <- names
   , nonIgnoredName name
@@ -65,7 +65,7 @@ checkEmptyInherit warn e = [ (warn EmptyInherit) {pos=singletonSpan loc}
 
 checkUnneededRec :: CheckBase
 checkUnneededRec warn e = [ warn UnneededRec
-  | NSet_ _ann NRecursive binds <- [unFix e]
+  | NSetAnnF _ann Recursive binds <- [unFix e]
   , not $ or $ choose binds <&> \case
     (bind, others) -> case bind of
       NamedVar (StaticKey name :| []) _ _ -> all (noRef name) (values others)
@@ -74,7 +74,7 @@ checkUnneededRec warn e = [ warn UnneededRec
 
 checkOpBase :: OffenseCategory -> Pair (UnwrappedNExprLoc -> Bool) -> NBinaryOp -> Bool -> CheckBase
 checkOpBase ot (Pair p1 p2) op reflexive warn e = [ warn ot
-  | NBinary_ _ op' (Fix e2) (Fix e1) <- [unFix e]
+  | NBinaryAnnF _ op' (Fix e2) (Fix e1) <- [unFix e]
   , p1 e1 && p2 e2 || p1 e2 && p2 e1 && reflexive
   , op == op'
   ]
@@ -85,7 +85,7 @@ checkSymmetricOpBase ot p op = checkOpBase ot (dup p) op False
 checkListLiteralConcat :: CheckBase
 checkListLiteralConcat = checkSymmetricOpBase ListLiteralConcat isListLiteral NConcat where
   isListLiteral = \case
-    NList_ _ _ -> True
+    NListAnnF _ _ -> True
     _ -> False
 
 checkSetLiteralUpdate :: CheckBase
@@ -99,21 +99,21 @@ checkUpdateEmptySet = checkOpBase UpdateEmptySet (Pair (const True) isEmptySetLi
 -- Works, but the pattern can be useful, so not in the full list of checks.
 checkUnneededAntiquote :: CheckBase
 checkUnneededAntiquote warn e = [ warn UnneededAntiquote
-  | NStr_ _ (DoubleQuoted [Antiquoted _]) <- [unFix e]
+  | NStrAnnF _ (DoubleQuoted [Antiquoted _]) <- [unFix e]
   ]
 
 checkNegateAtom :: CheckBase
 checkNegateAtom warn e= [warn NegateAtom & suggest (mkBool $ not b)
-  | NUnary_ _ NNot e' <- [unFix e]
-  , NConstant_ _ (NBool b) <- [unFix e']
+  | NUnaryAnnF _ NNot e' <- [unFix e]
+  , NConstantAnnF _ (NBool b) <- [unFix e']
   ]
 
 checkEtaReduce :: CheckBase
 checkEtaReduce warn e = [ warn EtaReduce & suggest' xs
   & note' varName x
-  | NAbs_ _ (Param x) e' <- [unFix e]
-  , NBinary_ _ NApp xs e'' <- [unFix e']
-  , NSym_ _ x' <- [unFix e'']
+  | NAbsAnnF _ (Param x) e' <- [unFix e]
+  , NBinaryAnnF _ NApp xs e'' <- [unFix e']
+  , NSymAnnF _ x' <- [unFix e'']
   , x == x'
   , x `noRef` xs
   ]
@@ -122,8 +122,8 @@ checkFreeLetInFunc :: CheckBase
 checkFreeLetInFunc warn e = [ warn FreeLetInFunc
   & note' varName x
   & suggest (mkLets (stripAnnotation <$$> xs) $ mkFunction (Param x) $ stripAnnotation e'')
-  | NAbs_ _ (Param x) e' <- [unFix e]
-  , NLet_ _ xs e'' <- [unFix e']
+  | NAbsAnnF _ (Param x) e' <- [unFix e]
+  , NLetAnnF _ xs e'' <- [unFix e']
   , all (noRef x) $ values xs
   ]
 
@@ -133,16 +133,16 @@ checkDIYInherit warn e = [ warn DIYInherit
   & note' varName x
   | (binds, _, _) <- [topLevelBinds e]
   , NamedVar (StaticKey x :| []) e' loc <- binds
-  , NSym_ _ x' <- [unFix e']
+  , NSymAnnF _ x' <- [unFix e']
   , x == x'
   ]
 
 checkLetInInheritRecset :: CheckBase
 checkLetInInheritRecset warn e = [ warn LetInInheritRecset
   & note' varName name
-  | NLet_ _ binds usedIn <- [unFix e]
+  | NLetAnnF _ binds usedIn <- [unFix e]
   , (inner, outer) <- chooseTrees usedIn
-  , NSet_ _ann NRecursive set <- [unFix inner]
+  , NSetAnnF _ann Recursive set <- [unFix inner]
   , (this, others) <- choose binds
   , let names = simpleBoundNames this
   , let allNamesFree x = all (`noRef` x) names
@@ -154,31 +154,31 @@ checkLetInInheritRecset warn e = [ warn LetInInheritRecset
 
 checkEmptyLet :: CheckBase
 checkEmptyLet warn e = [ warn EmptyLet & suggest' e'
-  | NLet_ _ [] e' <- [unFix e]
+  | NLetAnnF _ [] e' <- [unFix e]
   ]
 
 checkUnfortunateArgName :: CheckBase
 checkUnfortunateArgName warn e = [ warn UnfortunateArgName
   & note' "now" name & note' "suggested" name'
-  | NAbs_ _ (Param name) e' <- [unFix e]
+  | NAbsAnnF _ (Param name) e' <- [unFix e]
   , (inner, outer) <- chooseTrees e'
   , (bindings, context, _) <- [topLevelBinds inner]
   , NamedVar (StaticKey name' :| []) e'' _ <- bindings
   , name' /= name
-  , NSym_ _ name'' <- [unFix e'']
+  , NSymAnnF _ name'' <- [unFix e'']
   , name'' == name
 
   , let valid = not . plainInheritsAnywhere name
   -- These are expensive! Do them last:
   , valid context
-  , valid $ Fix $ NSet_ generated NRecursive bindings
+  , valid $ Fix $ NSetAnnF generated Recursive bindings
   , valid outer
   ]
 
 checkBetaReduction :: CheckBase
 checkBetaReduction warn e = [ warn BetaReduction
-  | NBinary_ _ NApp e' _ <- [unFix e]
-  , NAbs_ _ _ _ <- [unFix e']
+  | NBinaryAnnF _ NApp e' _ <- [unFix e]
+  , NAbsAnnF {} <- [unFix e']
   ]
 
 checkAlphabeticalBindings :: CheckBase
@@ -189,21 +189,21 @@ checkAlphabeticalBindings warn e = [ warn AlphabeticalBindings
 
 checkAlphabeticalArgs :: CheckBase
 checkAlphabeticalArgs warn e = [ warn AlphabeticalArgs
-  | NAbs_ _ (ParamSet xs _ _) _ <- [unFix e]
+  | NAbsAnnF _ (ParamSet _ _ xs) _ <- [unFix e]
   , not $ sorted $ const () <$$> xs
   ]
 
 checkSequentialLet :: CheckBase
 checkSequentialLet warn e = [ warn SequentialLet
-  | NLet_ _ _ e' <- [unFix e]
-  , NLet_ _ _ _ <- [unFix e']
+  | NLetAnnF _ _ e' <- [unFix e]
+  , NLetAnnF _ _ _ <- [unFix e']
   ]
 
 checkEmptyVariadicParamSet :: CheckBase
 checkEmptyVariadicParamSet warn e = [ warn EmptyVariadicParamSet
   & suggest (Fix $ NAbs (Param $ fromMaybe "_" x) $ stripAnnotation e')
   & note IncreasesGenerality
-  | NAbs_ _ (ParamSet [] True x) e' <- [unFix e]
+  | NAbsAnnF _ (ParamSet x _ []) e' <- [unFix e]
   ]
 
 data AvailableCheck = AvailableCheck

@@ -18,6 +18,7 @@ import           Paths_nix_linter
 
 import           Nix.Expr.Types.Annotated
 import           Nix.Parser
+import           Nix.Utils                (Path(..))
 
 import           Test.Tasty
 import           Test.Tasty.HUnit
@@ -45,8 +46,9 @@ case_examples_match = do
       let strippedName = stripExtension example
       category <- parseCategory strippedName
       let check = checkCategories $ Set.toList category
+      let path = Path (exampleDir </> example)
 
-      parsed <- parseNixFileLoc (exampleDir </> example) >>= \case
+      parsed <- parseNixFileLoc path >>= \case
         Right x  -> pure x
         Left err -> assertFailure (show err)
 

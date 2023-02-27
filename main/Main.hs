@@ -35,6 +35,7 @@ import           System.IO              (IOMode (..), stderr, stdout, withFile)
 import qualified Data.ByteString.Lazy   as B
 
 import           Nix.Parser
+import           Nix.Utils              (Path(..))
 
 import qualified Data.Set               as Set
 
@@ -93,7 +94,7 @@ listDirRecursive path = resolveDir' path >>= readDir
       S.fromList (toFilePath <$> files) `S.serial` foldMap readDir dirs
 
 parseFiles = S.mapMaybeM $ (\path ->
-  parseNixFileLoc path >>= \case
+  parseNixFileLoc (Path path) >>= \case
     Right parse -> do
       pure $ Just parse
     Left why -> do
